@@ -1,0 +1,40 @@
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply plugin: 'idea'
+repositories {
+    jcenter()
+    maven { url "http://repo.spring.io/snapshot" }
+    maven { url "http://repo.spring.io/milestone" }
+    maven { url "http://10.32.11.210:8081/nexus/content/groups/public" }
+}
+
+group = 'org.nofdev'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+[compileJava, compileTestJava, compileGroovy, compileTestGroovy]*.options*.encoding = 'UTF-8'
+
+dependencies {
+    compile "org.codehaus.groovy:groovy-all:2.4.4"
+}
+
+
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '2.5'
+}
+
+//TODO @Deprecated apply plugin: 'maven-publish'
+apply plugin: 'maven'
+
+// ./gradlew uploadArchives -PmavenUser=deployment -PmavenPassword=xxx
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "http://10.32.11.210:8081/nexus/content/repositories/snapshots/") {
+                authentication(userName: "deployment", password: "yintai.123")
+            }
+        }
+    }
+}
