@@ -39,10 +39,9 @@ class Paginator {
         this.page = page;
     }
 
-    long getOffset() {
+    long offset() {
         return (page - 1) * pageSize;
     }
-
 
     static Paginator page(long page) {
         Paginator paginator = new Paginator();
@@ -55,32 +54,5 @@ class Paginator {
         paginator.setPage(page);
         paginator.setPageSize(pageSize);
         return paginator;
-    }
-
-    static Paginator pageContains(long index, int pageSize) {
-        return Paginator.page(index / pageSize + 1, pageSize);
-    }
-
-    void turnToPageContains(long index) {
-        this.page = pageContains(index, pageSize).page;
-    }
-
-    Map<String, Object> getGormParams() {
-        Map<String, Object> map = new HashMap<String, Object>();
-        map.put("offset", getOffset());
-        map.put("max", getPageSize());
-        return map;
-    }
-
-    public  <T>  List<T> filter(List<T> list) {
-        return list.subList((int) getOffset(),
-                Math.max(
-                        (int) getOffset(),
-                        Math.min(
-                                (int) getOffset() + getPageSize(),
-                                list.size()
-                        )
-                )
-        );
     }
 }

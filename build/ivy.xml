@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ivy-module version="2.0" xmlns:m="http://ant.apache.org/ivy/maven">
-  <info organisation="org.nofdev" module="service-core" revision="0.0.1-SNAPSHOT" status="integration" publication="20150824115707">
+  <info organisation="org.nofdev" module="service-core" revision="0.0.1-SNAPSHOT" status="integration" publication="20150910134543">
     <description/>
   </info>
   <configurations>
