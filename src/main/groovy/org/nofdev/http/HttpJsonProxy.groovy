@@ -81,7 +81,7 @@ public class HttpJsonProxy implements InvocationHandler {
 
     private Map<String, String> serviceContextToMap(ServiceContext serviceContext) {
         Map<String, String> context = new HashMap<>();
-        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper()
         if (serviceContext != null && serviceContext.getCallId() != null) {
             context.put(ServiceContext.CALLID.toString(), objectMapper.writeValueAsString(serviceContext.getCallId()));
         }
@@ -90,9 +90,9 @@ public class HttpJsonProxy implements InvocationHandler {
 
     private ServiceContext mapToServiceContext(Map<String, String> header) {
 
-        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper()
         def serviceContext = ServiceContextHolder.getServiceContext()
-        header.each { k, v ->
+        header?.each { k, v ->
             if (k == ServiceContext.CALLID) {
                 def callId = objectMapper.readValue(v, CallId)
                 serviceContext.getCallId()?.parent = callId?.id
