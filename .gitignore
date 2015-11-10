@@ -43,6 +43,7 @@ target/
  
 # "temporary" build files
 target/
+build/
  
 # other
 *.iws

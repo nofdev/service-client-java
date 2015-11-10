@@ -32,7 +32,7 @@ class HttpJsonProxySpec extends Specification {
         setup:
         mockServer.when(
                 HttpRequest.request()
-                        .withURL("${url}/facade/json/org.nofdev.http/DemoFacade/${method}")
+                        .withURL("${url}/facade/json/org.nofdev.http/Demo/${method}")
         ).respond(
                 HttpResponse.response()
                         .withStatusCode(200)
@@ -56,7 +56,7 @@ class HttpJsonProxySpec extends Specification {
         def exceptionMessage = new ExceptionMessage(name: "org.nofdev.http.TestException", msg: "Test")
         mockServer.when(
                 HttpRequest.request()
-                        .withURL("${url}/facade/json/org.nofdev.http/DemoFacade/method1")
+                        .withURL("${url}/facade/json/org.nofdev.http/Demo/method1")
         ).respond(
                 HttpResponse.response()
                         .withStatusCode(500)
@@ -88,7 +88,7 @@ class HttpJsonProxySpec extends Specification {
 
     def "测试代理策略接口"() {
         setup:
-        url = "http://localhost:9999/facade/json/org.nofdev.http/DemoFacade"
+        url = "http://localhost:9999/facade/json/org.nofdev.http/Demo"
         mockServer.when(
                 HttpRequest.request().withURL("${url}/${method}")
         ).respond(
@@ -114,7 +114,7 @@ class HttpJsonProxySpec extends Specification {
         setup:
         mockServer.when(
                 HttpRequest.request()
-                        .withURL("${url}/facade/json/org.nofdev.http/DemoFacade/sayHello")
+                        .withURL("${url}/facade/json/org.nofdev.http/Demo/sayHello")
         ).respond(
                 HttpResponse.response()
                         .withStatusCode(200)
