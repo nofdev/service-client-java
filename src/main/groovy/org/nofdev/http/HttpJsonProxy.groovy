@@ -59,6 +59,14 @@ public class HttpJsonProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, Throwable {
+        def serviceContext = ServiceContextHolder.getServiceContext();
+
+        if(!serviceContext?.getCallId()){
+            def thisId = UUID.randomUUID().toString()
+            def callId = new CallId(id: thisId, root: thisId)
+            serviceContext.setCallId(callId)
+            ServiceContextHolder.setServiceContext(serviceContext)
+        }
 
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
@@ -69,7 +77,7 @@ public class HttpJsonProxy implements InvocationHandler {
         logger.debug("Default connection pool idle connection time is " + connectionManagerFactory.getIdleConnTimeout());
         Map<String, String> params = proxyStrategy.getParams(args);
 
-        ServiceContext serviceContext = ServiceContextHolder.getServiceContext();
+
         Map<String, String> context = serviceContextToMap(serviceContext)
         HttpMessageWithHeader response = httpClientUtil.postWithHeader(remoteURL, params, context);
         serviceContext = mapToServiceContext(response.headers)
