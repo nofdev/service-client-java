@@ -2,7 +2,6 @@ package org.nofdev.http
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.CompileStatic
-import org.nofdev.servicefacade.CallId
 import org.nofdev.servicefacade.ServiceContext
 import org.nofdev.servicefacade.ServiceContextHolder
 import org.slf4j.Logger
@@ -59,14 +58,15 @@ public class HttpJsonProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, Throwable {
-        def serviceContext = ServiceContextHolder.getServiceContext();
+        def serviceContext = ServiceContextHolder.getServiceContext()
 
-        if(!serviceContext?.getCallId()){
-            def thisId = UUID.randomUUID().toString()
-            def callId = new CallId(id: thisId, root: thisId)
-            serviceContext.setCallId(callId)
-            ServiceContextHolder.setServiceContext(serviceContext)
-        }
+//        //客户端只把当前上下文中的内容变成 header 发给服务端, 自己本身不做任何处理
+//        def callId = serviceContext?.getCallId()
+//        def thisId = UUID.randomUUID().toString()
+//        if(!callId){
+//            callId = new CallId(id: thisId, root: thisId)
+//            serviceContext.setCallId(callId)
+//        }
 
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
@@ -75,14 +75,11 @@ public class HttpJsonProxy implements InvocationHandler {
         String remoteURL = proxyStrategy.getRemoteURL(inter, method);
         HttpClientUtil httpClientUtil = new HttpClientUtil(connectionManagerFactory, defaultRequestConfig);
         logger.debug("Default connection pool idle connection time is " + connectionManagerFactory.getIdleConnTimeout());
-        Map<String, String> params = proxyStrategy.getParams(args);
-
-
+        Map<String, String> params = proxyStrategy.getParams(args)
         Map<String, String> context = serviceContextToMap(serviceContext)
-        HttpMessageWithHeader response = httpClientUtil.postWithHeader(remoteURL, params, context);
-        serviceContext = mapToServiceContext(response.headers)
-        ServiceContextHolder.setServiceContext(serviceContext)
 
+        logger.info("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
+        HttpMessageWithHeader response = httpClientUtil.postWithHeader(remoteURL, params, context);
         return proxyStrategy.getResult(method, response);
 
     }
@@ -94,23 +91,6 @@ public class HttpJsonProxy implements InvocationHandler {
             context.put(ServiceContext.CALLID.toString(), objectMapper.writeValueAsString(serviceContext.getCallId()));
         }
         context
-    }
-
-    private ServiceContext mapToServiceContext(Map<String, String> header) {
-
-        ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper()
-        def serviceContext = ServiceContextHolder.getServiceContext()
-        header?.each { k, v ->
-            if (k == ServiceContext.CALLID) {
-                def callId = objectMapper.readValue(v, CallId)
-                serviceContext.getCallId()?.parent = callId?.id
-            } else if (k.startsWith(ServiceContext.PREFIX.toString())) {
-                serviceContext.put(k, v)
-            } else {
-                //什么都不干
-            }
-        }
-        serviceContext
     }
 
     public Object getObject() {
