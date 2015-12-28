@@ -9,7 +9,7 @@ repositories {
 }
 
 group = 'org.nofdev'
-version = '1.0.5'
+version = '1.0.6'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -23,7 +23,7 @@ dependencies {
     compile "org.codehaus.groovy:groovy-all:2.4.4"
     compile "com.fasterxml.jackson.core:jackson-databind:2.4.0"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.4.0"
-    compile (group: 'org.nofdev', name: 'service-core', version: '1.0.0')
+    compile (group: 'org.nofdev', name: 'service-core', version: '1.0.1')
     compile "org.nofdev:http-client-util:1.0.0"
 
     testCompile(
