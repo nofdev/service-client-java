@@ -9,7 +9,7 @@ repositories {
 }
 
 group = 'org.nofdev'
-version = '1.0.7'
+version = '1.0.8'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
@@ -24,7 +24,7 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:2.6.3"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.6.3"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.6.3"
-    compile (group: 'org.nofdev', name: 'service-core', version: '1.0.1')
+    compile (group: 'org.nofdev', name: 'service-core', version: '1.0.2')
     compile "org.nofdev:http-client-util:1.0.0"
 
     testCompile(
