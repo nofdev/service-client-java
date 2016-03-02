@@ -1,5 +1,13 @@
 # service-client-java
 
-`Nofdev RPC 调用框架中的 Java 客户端`
+## What
 
-调用方法参考测试类 `HttpJsonProxySpec`
+It is a part of Nofdev RPC framework. 
+
+It is a rpc client side util for java project. 
+
+## How 
+
+Please refer `HttpJsonProxySpec`. 
+
+Notice: You must include the same interface classes with server side in your client side project. 
