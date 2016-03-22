@@ -117,13 +117,13 @@ publishing {
                 // add required elements
                 asNode().children().last() + {
                     resolveStrategy = Closure.DELEGATE_FIRST
-                    name 'service-core'
-                    description 'The basic componet of Nofdev RPC framework'
-                    url 'https://github.com/nofdev/service-core'
+                    name 'service-client-java'
+                    description 'The client side componet of Nofdev RPC framework'
+                    url 'https://github.com/nofdev/service-client-java'
                     scm {
-                        url 'https://github.com/nofdev/service-core.git'
-                        connection 'scm:git:git://github.com/nofdev/service-core.git'
-                        developerConnection 'scm:git:ssh:git@github.com:nofdev/service-core.git'
+                        url 'https://github.com/nofdev/service-client-java.git'
+                        connection 'scm:git:git://github.com/nofdev/service-client-java.git'
+                        developerConnection 'scm:git:ssh:git@github.com:nofdev/service-client-java.git'
                     }
                     licenses {
                         license {
