@@ -72,7 +72,7 @@ class OAuthJsonProxy implements InvocationHandler {
         Map<String, String> context = serviceContextToMap(serviceContext)
 
         // accessToken需要放在header里
-        if (context.get('access_token') != null || oAuthProxyStrategy.isExpire(context.get('access_token'))) {
+        if (!context.containsKey("access_token")) {
             accessToken = oAuthProxyStrategy.getAccessToken()
             context.put('access_token', accessToken)
 
