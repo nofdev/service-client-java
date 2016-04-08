@@ -41,8 +41,8 @@ apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
 def isMvnCentral
-if (hasProperty("mavenCentral")) {
-    isMvnCentral = mavenCentral
+if (hasProperty("isMavenCentral")) {
+    isMvnCentral = isMavenCentral
 }
 
 task sourceJar(type: Jar, dependsOn: classes) {
@@ -108,7 +108,7 @@ def getPomSignature = {
     return project.tasks.signPom.signatureFiles.collect { it }[0]
 }
 
-// ./gradlew clean pP publish -PmavenUrl=xxx -PmavenUser=xxx -PmavenPassword=xxx -Psigning.keyId=xxx -Psigning.password=xxx -Psigning.secretKeyRingFile=xxx -PisMvnCentral=true
+// ./gradlew clean pP publish -PmavenUrl=xxx -PmavenUser=xxx -PmavenPassword=xxx -Psigning.keyId=xxx -Psigning.password=xxx -Psigning.secretKeyRingFile=xxx -PisMavenCentral=true
 publishing {
     publications {
         jar(MavenPublication) {
