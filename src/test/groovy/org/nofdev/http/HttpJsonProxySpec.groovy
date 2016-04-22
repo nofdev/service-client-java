@@ -127,6 +127,16 @@ class HttpJsonProxySpec extends Specification {
         expect:
         result == null
     }
+
+    def "测试远程服务器宕机的情况"(){
+        setup:
+        def proxy = new HttpJsonProxy(DemoFacade, url)
+        def testFacadeService = proxy.getObject()
+        when:
+        testFacadeService.sayHello()
+        then:
+        thrown(Exception) //TODO Maybe it should be thrown as a custom ServiceNotFoundException
+    }
 }
 
 class UserDTO implements Serializable {
