@@ -3,7 +3,7 @@ package org.nofdev.http.oauth2
 /**
  * Created by HouDongQiang on 2016/3/17.
  */
-class OAuthDTO {
+class OAuthConfig {
     String clientId
     String clientSecret
     String grantType
