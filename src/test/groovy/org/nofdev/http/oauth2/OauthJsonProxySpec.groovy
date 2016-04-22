@@ -1,5 +1,4 @@
 package org.nofdev.http.oauth2
-
 import com.yintai.demo.sample.facade.HelloFacade
 import spock.lang.Specification
 /**
@@ -21,23 +20,23 @@ class OauthJsonProxySpec extends Specification {
     def "基本测试"(){
         setup:
 
-        String baseUrl = "http://demo-test-bk.yintai.com:1234";
+            String baseUrl = "http://demo-test-bk.yintai.com:1234";
 
-        OAuthConfig oAuthDTO=new OAuthConfig();
-        oAuthDTO.clientId="test"
-        oAuthDTO.clientSecret="test"
-        oAuthDTO.grantType="client_credentials"
-        oAuthDTO.authenticationServerUrl="http://gw-test-bk.yintai.com:3000/oauth/token"
+            OAuthConfig oAuthConfig=new OAuthConfig();
+            oAuthConfig.clientId="test"
+            oAuthConfig.clientSecret="test"
+            oAuthConfig.grantType="client_credentials"
+            oAuthConfig.authenticationServerUrl="http://gw-test-bk.yintai.com:3000/oauth/token"
 
-        HelloFacade helloFacade=new OAuthJsonProxy(
-                HelloFacade.class,
-                oAuthDTO,
-                baseUrl
-        ).getObject() as HelloFacade;
+            HelloFacade helloFacade=new OAuthJsonProxy(
+                    HelloFacade.class,
+                    oAuthConfig,
+                    baseUrl
+            ).getObject() as HelloFacade;
 
-        def result = helloFacade.hello("123")
+            def result = helloFacade.hello("world")
 
         expect:
-        result == "Hello 123"
+            result == "Hello world"
     }
 }

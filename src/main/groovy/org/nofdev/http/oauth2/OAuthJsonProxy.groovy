@@ -87,15 +87,18 @@ class OAuthJsonProxy implements InvocationHandler {
         return TokenContext.instance
     }
 
-    private HttpMessageWithHeader resource(CustomURLConnectionClient httpClient, String url, Map<String, String> params, Map<String, String> headers) {
-        println("获取到的token是:" + ObjectMapperFactory.createObjectMapper().writeValueAsString(getAccessToken()))
+    private HttpMessageWithHeader resource(String url, Map<String, String> params, Map<String, String> headers) {
         //init headers
         OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(getAccessToken().access_token).buildHeaderMessage();
-        bearerClientRequest.setBody(params.toString())
-        bearerClientRequest.setHeaders(headers)
-
-        OAuthClient oAuthClient = new OAuthClient(httpClient);
-
+        // add headers
+        headers.each{
+            bearerClientRequest.addHeader(it.key,it.value)
+        }
+        // add body
+        bearerClientRequest.setBody(new ObjectMapper().writeValueAsString(params))
+        // post request
+        CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
+        OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
         CustomOAuthResourceResponse resourceResponse = oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class );
         if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
             throw new AuthorizationException("未授权");
@@ -114,17 +117,13 @@ class OAuthJsonProxy implements InvocationHandler {
             return inter.toString();
         }
 
-        def token = this.getAccessToken()
-
         String remoteURL = proxyStrategy.getRemoteURL(inter, method);
-
-        CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
         Map<String, String> params = proxyStrategy.getParams(args)
         Map<String, String> context = serviceContextToMap(serviceContext)
 
         logger.info("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
 
-        HttpMessageWithHeader response = this.resource(customURLConnectionClient,remoteURL,params,context)
+        HttpMessageWithHeader response = this.resource(remoteURL,params,context)
 
         return proxyStrategy.getResult(method, response)
     }

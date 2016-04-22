@@ -1,5 +1,6 @@
 package org.nofdev.http.oauth2
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.oltu.oauth2.client.HttpClient
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest
 import org.apache.oltu.oauth2.client.response.OAuthClientResponse
@@ -36,7 +37,7 @@ class CustomURLConnectionClient implements HttpClient {
 
     @Override
     def <T extends OAuthClientResponse> T execute(OAuthClientRequest request, Map<String, String> headers, String requestMethod, Class<T> responseClass) throws OAuthSystemException, OAuthProblemException {
-        HttpMessageWithHeader httpMessageWithHeader = new HttpClientUtil(connectionManagerFactory, defaultRequestConfig).postWithHeader(request.locationUri, [params:"[\"world\"]"] , request.headers)
+        HttpMessageWithHeader httpMessageWithHeader = new HttpClientUtil(connectionManagerFactory, defaultRequestConfig).postWithHeader(request.locationUri, new ObjectMapper().readValue(request.getBody(), Map.class) , request.headers)
         return new CustomOAuthResourceResponse(headers: httpMessageWithHeader.headers, body: httpMessageWithHeader.body, contentType: httpMessageWithHeader.contentType, responseCode: httpMessageWithHeader.statusCode)
     }
 
