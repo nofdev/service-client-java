@@ -71,6 +71,9 @@ public class HttpJsonProxy implements InvocationHandler {
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
         }
+        if("toString".equals(method.getName())){
+            return inter.toString();
+        }
 
         String remoteURL = proxyStrategy.getRemoteURL(inter, method);
         HttpClientUtil httpClientUtil = new HttpClientUtil(connectionManagerFactory, defaultRequestConfig);
