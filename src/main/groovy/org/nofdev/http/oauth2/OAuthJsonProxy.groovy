@@ -62,7 +62,7 @@ class OAuthJsonProxy implements InvocationHandler {
         this(inter, oAuthConfig, new DefaultProxyStrategyImpl(url))
     }
 
-    private TokenContext getAccessToken() throws Exception {
+    public TokenContext getAccessToken() throws Exception {
         if (TokenContext.instance.isExpire()) {
             //todo 默认为client_credentials方式 待改造成4种都支持的
             if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {

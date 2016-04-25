@@ -17,4 +17,5 @@ class TokenContext {
     public boolean isExpire() {
         return TokenContext.instance.getStopTime() < new Date().getTime()
     }
+
 }
