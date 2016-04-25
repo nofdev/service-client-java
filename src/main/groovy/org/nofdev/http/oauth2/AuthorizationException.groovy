@@ -1,9 +1,8 @@
 package org.nofdev.http.oauth2
-
 /**
  * Created by Liutengfei on 2016/4/21 0021.
  */
-class AuthorizationException extends  RuntimeException{
+class AuthorizationException  extends RuntimeException {
     AuthorizationException() {
     }
 

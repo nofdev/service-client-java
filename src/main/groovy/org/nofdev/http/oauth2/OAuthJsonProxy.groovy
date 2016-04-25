@@ -12,6 +12,7 @@ import org.apache.oltu.oauth2.common.message.types.GrantType
 import org.nofdev.http.*
 import org.nofdev.servicefacade.ServiceContext
 import org.nofdev.servicefacade.ServiceContextHolder
+import org.nofdev.servicefacade.UnhandledException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -61,7 +62,7 @@ class OAuthJsonProxy implements InvocationHandler {
         this(inter, oAuthConfig, new DefaultProxyStrategyImpl(url))
     }
 
-    private TokenContext getAccessToken() throws OAuthProblemException {
+    private TokenContext getAccessToken() throws Exception {
         if (TokenContext.instance.isExpire()) {
             //todo 默认为client_credentials方式 待改造成4种都支持的
             if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
@@ -74,36 +75,44 @@ class OAuthJsonProxy implements InvocationHandler {
 
                 long timeNow = new Date().getTime();
                 OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient())
-                OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
-                TokenContext.instance.access_token = oAuthResponse.getAccessToken()
-                TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
-                TokenContext.instance.startTime = timeNow
-                TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
+                try {
+                    OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
+                    TokenContext.instance.access_token = oAuthResponse.getAccessToken()
+                    TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
+                    TokenContext.instance.startTime = timeNow
+                    TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
+                } catch (Exception e) {
+                    if (e instanceof OAuthProblemException) {//发送请求成功了但是token验证错误
+                        throw new AuthenticationException("token认证失败", e);
+                    } else {//请求没有发送成功（400和401以外的异常）
+                        throw new UnhandledException("token认证服务器系统异常", e);
+                    }
+                }
             } else {
-                logger.error("现在支持" + GrantType.CLIENT_CREDENTIALS.toString() + "方式")
-                throw new AuthorizationException("grant_type not support!")
+                logger.error("现在只支持" + GrantType.CLIENT_CREDENTIALS.toString() + "方式")
+                throw new AuthenticationException("grant_type not support!")
             }
         }
         return TokenContext.instance
     }
 
-    private HttpMessageWithHeader resource(String url, Map<String, String> params, Map<String, String> headers) {
+    private HttpMessageWithHeader resource(String url, Map<String, String> params, Map<String, String> headers) throws Exception {
         //init headers
         OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(getAccessToken().access_token).buildHeaderMessage();
         // add headers
-        headers.each{
-            bearerClientRequest.addHeader(it.key,it.value)
+        headers.each {
+            bearerClientRequest.addHeader(it.key, it.value)
         }
         // add body
         bearerClientRequest.setBody(new ObjectMapper().writeValueAsString(params))
         // post request
         CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
         OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
-        CustomOAuthResourceResponse resourceResponse = oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class );
+        CustomOAuthResourceResponse resourceResponse = oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
         if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
             throw new AuthorizationException("未授权");
         }
-        return new HttpMessageWithHeader(resourceResponse.getResponseCode(),resourceResponse.getContentType(),resourceResponse.getBody(),resourceResponse.getHeaders());
+        return new HttpMessageWithHeader(resourceResponse.getResponseCode(), resourceResponse.getContentType(), resourceResponse.getBody(), resourceResponse.getHeaders());
     }
 
     @Override
@@ -113,7 +122,7 @@ class OAuthJsonProxy implements InvocationHandler {
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
         }
-        if("toString".equals(method.getName())){
+        if ("toString".equals(method.getName())) {
             return inter.toString();
         }
 
@@ -123,7 +132,7 @@ class OAuthJsonProxy implements InvocationHandler {
 
         logger.info("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
 
-        HttpMessageWithHeader response = this.resource(remoteURL,params,context)
+        HttpMessageWithHeader response = this.resource(remoteURL, params, context)
 
         return proxyStrategy.getResult(method, response)
     }
