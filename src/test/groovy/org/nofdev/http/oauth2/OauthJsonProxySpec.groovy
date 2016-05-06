@@ -15,11 +15,9 @@ class OauthJsonProxySpec extends Specification {
     private ClientAndServer tokenServer
     private def tokenServerUrl
 
-    def setupSpec() {
-
-    }
-
     def setup() {
+        TokenContext.instance.stopTime = 0 //保证每次测试重新获取 token TODO 要从内存中销毁 TokenContext 才合适
+
         //resource server
         resourceServer = ClientAndServer.startClientAndServer(2016)
         resourceUrl = "http://localhost:2016"
@@ -30,6 +28,8 @@ class OauthJsonProxySpec extends Specification {
     }
 
     def cleanup() {
+        TokenContext.instance.stopTime = 0 //保证每次测试重新获取 token TODO 要从内存中销毁 TokenContext 才合适
+
         tokenServer.stop()
         resourceServer.stop()
     }
@@ -53,7 +53,7 @@ class OauthJsonProxySpec extends Specification {
             oAuthConfig.clientId="test"
             oAuthConfig.clientSecret="test"
             oAuthConfig.grantType="client_credentials"
-            oAuthConfig.authenticationServerUrl="http://localhost:9527/oauth/token"
+            oAuthConfig.authenticationServerUrl="${tokenServerUrl}"
 
             def proxy = new OAuthJsonProxy(
                     DemoFacade.class,
@@ -62,6 +62,8 @@ class OauthJsonProxySpec extends Specification {
             )
             def testFacadeService = proxy.getObject()
             def returnResult = testFacadeService."${method}"(*args);
+            sleep(1)
+            returnResult = testFacadeService."${method}"(*args);
             def tokenResult= TokenContext.instance.getAccess_token()
         expect:
             returnResult == exp
@@ -69,7 +71,7 @@ class OauthJsonProxySpec extends Specification {
         where:
             method              | args                                    | token        |expires_in |  tokenExp  | val                                      | exp
             "method1"           | []                                      | '111111111'  |3600       | '111111111'| "hello world"                            | "hello world"
-            "getAllAttendUsers" | [new UserDTO(name: "zhangsan", age: 10)]| '222222222'  |3600       | '111111111'| [new UserDTO(name: "zhangsan", age: 10)] | [new UserDTO(name: "zhangsan", age: 10)]
+            "getAllAttendUsers" | [new UserDTO(name: "zhangsan", age: 10)]| '222222222'  |3600       | '222222222'| [new UserDTO(name: "zhangsan", age: 10)] | [new UserDTO(name: "zhangsan", age: 10)]
     }
 
     def "token过期时自动获取新token"() {
