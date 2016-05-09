@@ -6,6 +6,7 @@ import org.nofdev.servicefacade.ServiceContext
 import org.nofdev.servicefacade.ServiceContextHolder
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.InvocationTargetException
@@ -60,6 +61,10 @@ public class HttpJsonProxy implements InvocationHandler {
     public Object invoke(Object proxy, Method method, Object[] args) throws IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, Throwable {
         def serviceContext = ServiceContextHolder.getServiceContext()
 
+        if(serviceContext?.getCallId()){
+            MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext?.getCallId()))
+        }
+
 //        //客户端只把当前上下文中的内容变成 header 发给服务端, 自己本身不做任何处理
 //        def callId = serviceContext?.getCallId()
 //        def thisId = UUID.randomUUID().toString()
@@ -83,8 +88,12 @@ public class HttpJsonProxy implements InvocationHandler {
 
         logger.info("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
         HttpMessageWithHeader response = httpClientUtil.postWithHeader(remoteURL, params, context);
-        return proxyStrategy.getResult(method, response);
 
+        def result = proxyStrategy.getResult(method, response)
+
+        logger.info("RPC get: ${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+
+        result
     }
 
     private Map<String, String> serviceContextToMap(ServiceContext serviceContext) {

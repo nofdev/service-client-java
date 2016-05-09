@@ -1,4 +1,5 @@
 package org.nofdev.http.oauth2
+
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.CompileStatic
 import org.apache.oltu.oauth2.client.OAuthClient
@@ -15,10 +16,12 @@ import org.nofdev.servicefacade.ServiceContextHolder
 import org.nofdev.servicefacade.UnhandledException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
+
 /**
  * Created by HouDongQiang on 2016/3/10.
  * for OAuth proxy handler. 用于OAuth认证的代理器
@@ -63,6 +66,7 @@ class OAuthJsonProxy implements InvocationHandler {
     }
 
     public TokenContext getAccessToken() throws Exception {
+        logger.info("Getting access token.")
         if (TokenContext.instance.isExpire()) {
             //todo 默认为client_credentials方式 待改造成4种都支持的
             if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
@@ -74,6 +78,7 @@ class OAuthJsonProxy implements InvocationHandler {
                         .buildBodyMessage();
 
                 long timeNow = new Date().getTime();
+                //TODO 这里每次都 new 一个不合适
                 OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient())
                 try {
                     OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
@@ -81,18 +86,23 @@ class OAuthJsonProxy implements InvocationHandler {
                     TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
                     TokenContext.instance.startTime = timeNow
                     TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
+                } catch (OAuthProblemException e) {
+                    logger.error(e.message, e)
+                    //发送请求成功了但是token验证错误
+                    throw new AuthenticationException("token认证失败", e);
                 } catch (Exception e) {
-                    if (e instanceof OAuthProblemException) {//发送请求成功了但是token验证错误
-                        throw new AuthenticationException("token认证失败", e);
-                    } else {//请求没有发送成功（400和401以外的异常）
-                        throw new UnhandledException("token认证服务器系统异常", e);
-                    }
+                    logger.error(e.message, e)
+                    //请求没有发送成功（400和401以外的异常）
+                    throw new UnhandledException("token认证服务器系统异常", e);
                 }
             } else {
-                logger.error("现在只支持" + GrantType.CLIENT_CREDENTIALS.toString() + "方式")
+                logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
                 throw new AuthenticationException("grant_type not support!")
             }
+        } else {
+            // 什么也不做
         }
+        logger.info("The access token is ${TokenContext.instance.access_token}, and expires in ${TokenContext.instance.expires_in}")
         return TokenContext.instance
     }
 
@@ -110,7 +120,8 @@ class OAuthJsonProxy implements InvocationHandler {
         OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
         CustomOAuthResourceResponse resourceResponse = oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
         if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
-            throw new AuthorizationException("未授权");
+            logger.error("对${url}的访问未取得授权")
+            throw new AuthorizationException("对${url}的访问未取得授权")
         }
         return new HttpMessageWithHeader(resourceResponse.getResponseCode(), resourceResponse.getContentType(), resourceResponse.getBody(), resourceResponse.getHeaders());
     }
@@ -118,6 +129,10 @@ class OAuthJsonProxy implements InvocationHandler {
     @Override
     Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         def serviceContext = ServiceContextHolder.getServiceContext()
+
+        if(serviceContext?.getCallId()){
+            MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext?.getCallId()))
+        }
 
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
@@ -134,7 +149,11 @@ class OAuthJsonProxy implements InvocationHandler {
 
         HttpMessageWithHeader response = this.resource(remoteURL, params, context)
 
-        return proxyStrategy.getResult(method, response)
+        def result = proxyStrategy.getResult(method, response)
+
+        logger.info("RPC get: ${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+
+        result
     }
 
 
