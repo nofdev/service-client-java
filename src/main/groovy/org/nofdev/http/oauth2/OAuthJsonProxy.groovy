@@ -102,7 +102,7 @@ class OAuthJsonProxy implements InvocationHandler {
         } else {
             // 什么也不做
         }
-        logger.info("The access token is ${TokenContext.instance.access_token}, and expires in ${TokenContext.instance.expires_in}")
+        logger.debug("The access token is ${TokenContext.instance.access_token}, and expires in ${TokenContext.instance.expires_in}")
         return TokenContext.instance
     }
 
@@ -128,6 +128,9 @@ class OAuthJsonProxy implements InvocationHandler {
 
     @Override
     Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        def start = new Date()
+        final endl = System.properties.'line.separator'
+
         def serviceContext = ServiceContextHolder.getServiceContext()
 
         if(serviceContext?.getCallId()){
@@ -145,13 +148,21 @@ class OAuthJsonProxy implements InvocationHandler {
         Map<String, String> params = proxyStrategy.getParams(args)
         Map<String, String> context = serviceContextToMap(serviceContext)
 
-        logger.info("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
+        logger.debug("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
 
         HttpMessageWithHeader response = this.resource(remoteURL, params, context)
 
         def result = proxyStrategy.getResult(method, response)
 
-        logger.info("RPC get: ${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+        def end = new Date()
+        long millis = end.time - start.time
+        def slow = ''
+        if(millis > 500) {
+            slow = "${endl}SLOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${endl}"
+            logger.warn("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+        }else {
+            logger.debug("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+        }
 
         result
     }

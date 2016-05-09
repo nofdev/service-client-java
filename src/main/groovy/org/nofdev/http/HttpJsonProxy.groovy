@@ -15,7 +15,6 @@ import java.lang.reflect.Proxy
 import java.security.KeyManagementException
 import java.security.KeyStoreException
 import java.security.NoSuchAlgorithmException
-
 /**
  * Created by Qiang on 6/3/14.
  */
@@ -59,19 +58,14 @@ public class HttpJsonProxy implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, Throwable {
+        def start = new Date()
+        final endl = System.properties.'line.separator'
+
         def serviceContext = ServiceContextHolder.getServiceContext()
 
         if(serviceContext?.getCallId()){
             MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext?.getCallId()))
         }
-
-//        //客户端只把当前上下文中的内容变成 header 发给服务端, 自己本身不做任何处理
-//        def callId = serviceContext?.getCallId()
-//        def thisId = UUID.randomUUID().toString()
-//        if(!callId){
-//            callId = new CallId(id: thisId, root: thisId)
-//            serviceContext.setCallId(callId)
-//        }
 
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
@@ -86,12 +80,20 @@ public class HttpJsonProxy implements InvocationHandler {
         Map<String, String> params = proxyStrategy.getParams(args)
         Map<String, String> context = serviceContextToMap(serviceContext)
 
-        logger.info("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
+        logger.debug("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
         HttpMessageWithHeader response = httpClientUtil.postWithHeader(remoteURL, params, context);
 
         def result = proxyStrategy.getResult(method, response)
 
-        logger.info("RPC get: ${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+        def end = new Date()
+        long millis = end.time - start.time
+        def slow = ''
+        if(millis > 500) {
+            slow = "${endl}SLOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${endl}"
+            logger.warn("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+        }else {
+            logger.debug("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
+        }
 
         result
     }
