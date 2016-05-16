@@ -15,13 +15,15 @@ class HttpJsonProxySpec extends Specification {
 
     private ClientAndServer mockServer
     private def url
+    private def secureUrl
 
     def setupSpec() {
     }
 
     def setup() {
-        mockServer = ClientAndServer.startClientAndServer(9999)
+        mockServer = ClientAndServer.startClientAndServer(9999,8443)
         url = "http://localhost:9999"
+        secureUrl = "https://localhost:8443"
     }
 
     def cleanup() {
@@ -49,6 +51,28 @@ class HttpJsonProxySpec extends Specification {
         method              | args                                     | val                                      | exp
         "method1"           | []                                       | "hello world"                            | "hello world"
         "getAllAttendUsers" | [new UserDTO(name: "zhangsan", age: 10)] | [new UserDTO(name: "zhangsan", age: 10)] | [new UserDTO(name: "zhangsan", age: 10)]
+    }
+
+    def "bugfix: 测试代理 https 请求, 对于不受信证书的 ssl 访问, 请使用复杂构造函数"() {
+        setup:
+        mockServer.when(
+                HttpRequest.request()
+                        .withURL("${secureUrl}/facade/json/org.nofdev.http/Demo/${method}")
+        ).respond(
+                HttpResponse.response()
+                        .withStatusCode(200)
+                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
+        )
+        def proxy = new HttpJsonProxy(DemoFacade, new DefaultProxyStrategyImpl(secureUrl),new PoolingConnectionManagerFactory(true),null)
+        def testFacadeService = proxy.getObject()
+        def result = testFacadeService."${method}"(*args);
+
+        expect:
+        result == exp
+
+        where:
+        method              | args                                     | val                                      | exp
+        "method1"           | []                                       | "hello world"                            | "hello world"
     }
 
     def "测试能否正常的代理一个远程接口抛出的异常"() {

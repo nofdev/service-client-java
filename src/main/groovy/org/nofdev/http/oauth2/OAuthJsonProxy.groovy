@@ -3,7 +3,6 @@ package org.nofdev.http.oauth2
 import com.fasterxml.jackson.databind.ObjectMapper
 import groovy.transform.CompileStatic
 import org.apache.oltu.oauth2.client.OAuthClient
-import org.apache.oltu.oauth2.client.URLConnectionClient
 import org.apache.oltu.oauth2.client.request.OAuthBearerClientRequest
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest
 import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse
@@ -21,7 +20,6 @@ import org.slf4j.MDC
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
-
 /**
  * Created by HouDongQiang on 2016/3/10.
  * for OAuth proxy handler. 用于OAuth认证的代理器
@@ -57,10 +55,22 @@ class OAuthJsonProxy implements InvocationHandler {
         }
     }
 
+    /**
+     * 不支持不被信任证书的 ssl 访问, 请使用支持传入new PoolingConnectionManagerFactory(true)的构造函数
+     * @param inter
+     * @param oAuthConfig
+     * @param proxyStrategy
+     */
     public OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy) {
         this(inter, oAuthConfig, proxyStrategy, null, null)
     }
 
+    /**
+     * 不支持不被信任证书的 ssl 访问, 请使用支持传入new PoolingConnectionManagerFactory(true)的构造函数
+     * @param inter
+     * @param oAuthConfig
+     * @param url
+     */
     public OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, String url) {
         this(inter, oAuthConfig, new DefaultProxyStrategyImpl(url))
     }
@@ -79,7 +89,7 @@ class OAuthJsonProxy implements InvocationHandler {
 
                 long timeNow = new Date().getTime();
                 //TODO 这里每次都 new 一个不合适
-                OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient())
+                OAuthClient oAuthClient = new OAuthClient(new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig))
                 try {
                     OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
                     TokenContext.instance.access_token = oAuthResponse.getAccessToken()
@@ -114,7 +124,9 @@ class OAuthJsonProxy implements InvocationHandler {
             bearerClientRequest.addHeader(it.key, it.value)
         }
         // add body
-        bearerClientRequest.setBody(new ObjectMapper().writeValueAsString(params))
+//        bearerClientRequest.setBody(new ObjectMapper().writeValueAsString(params))
+        bearerClientRequest.setBody(this.paramsToQueryString(params))
+
         // post request
         CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
         OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
@@ -180,6 +192,23 @@ class OAuthJsonProxy implements InvocationHandler {
     public Object getObject() {
         Class<?>[] interfaces = [inter];
         return Proxy.newProxyInstance(inter.getClassLoader(), interfaces, this);
+    }
+
+
+
+    private String paramsToQueryString(Map<String,String> params){
+        StringBuilder sb = new StringBuilder();
+        for (def entry : params.entrySet()) {
+            if (sb.length() > 0) {
+                sb.append('&');
+            }
+            sb.append(URLEncoder.encode(entry.key,'UTF-8'));
+            if (entry.value) {
+                sb.append('=');
+                sb.append(URLEncoder.encode(entry.value,'UTF-8'));
+            }
+        }
+        return sb.toString();
     }
 
 }

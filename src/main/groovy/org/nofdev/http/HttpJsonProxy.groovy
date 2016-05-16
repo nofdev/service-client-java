@@ -48,10 +48,20 @@ public class HttpJsonProxy implements InvocationHandler {
         }
     }
 
+    /**
+     * 不支持不被信任证书的 ssl 访问, 请使用支持传入new PoolingConnectionManagerFactory(true)的构造函数
+     * @param inter
+     * @param proxyStrategy
+     */
     public HttpJsonProxy(Class<?> inter, ProxyStrategy proxyStrategy) {
         this(inter, proxyStrategy, null, null);
     }
 
+    /**
+     * 不支持不被信任证书的 ssl 访问, 请使用支持传入new PoolingConnectionManagerFactory(true)的构造函数
+     * @param inter
+     * @param url
+     */
     public HttpJsonProxy(Class<?> inter, String url) {
         this(inter, new DefaultProxyStrategyImpl(url));
     }
