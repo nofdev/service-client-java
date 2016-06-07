@@ -65,40 +65,10 @@ class OAuthJsonProxy implements InvocationHandler {
         this(inter, oAuthConfig, new DefaultProxyStrategyImpl(url))
     }
 
-    public TokenContext getAccessToken() throws Exception {
+    public TokenContext getAccessToken() {
         logger.info("Getting access token.")
         if (TokenContext.instance.isExpire()) {
-            //todo 默认为client_credentials方式 待改造成4种都支持的
-            if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
-                OAuthClientRequest request = OAuthClientRequest
-                        .tokenLocation(oAuthConfig.authenticationServerUrl)
-                        .setGrantType(GrantType.CLIENT_CREDENTIALS)
-                        .setClientId(oAuthConfig.getClientId())
-                        .setClientSecret(oAuthConfig.getClientSecret())
-                        .buildBodyMessage();
-
-                long timeNow = new Date().getTime();
-                //TODO 这里每次都 new 一个不合适
-                OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient())
-                try {
-                    OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
-                    TokenContext.instance.access_token = oAuthResponse.getAccessToken()
-                    TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
-                    TokenContext.instance.startTime = timeNow
-                    TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
-                } catch (OAuthProblemException e) {
-                    logger.error(e.message, e)
-                    //发送请求成功了但是token验证错误
-                    throw new AuthenticationException("token认证失败", e);
-                } catch (Exception e) {
-                    logger.error(e.message, e)
-                    //请求没有发送成功（400和401以外的异常）
-                    throw new UnhandledException("token认证服务器系统异常", e);
-                }
-            } else {
-                logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
-                throw new AuthenticationException("grant_type not support!")
-            }
+            return getNewAccessToken()
         } else {
             // 什么也不做
         }
@@ -106,9 +76,44 @@ class OAuthJsonProxy implements InvocationHandler {
         return TokenContext.instance
     }
 
-    private HttpMessageWithHeader resource(String url, Map<String, String> params, Map<String, String> headers) throws Exception {
+    private TokenContext getNewAccessToken() throws Exception {
+        //todo 默认为client_credentials方式 待改造成4种都支持的
+        if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
+            OAuthClientRequest request = OAuthClientRequest
+                    .tokenLocation(oAuthConfig.authenticationServerUrl)
+                    .setGrantType(GrantType.CLIENT_CREDENTIALS)
+                    .setClientId(oAuthConfig.getClientId())
+                    .setClientSecret(oAuthConfig.getClientSecret())
+                    .buildBodyMessage();
+
+            long timeNow = new Date().getTime();
+            //TODO 这里每次都 new 一个不合适
+            OAuthClient oAuthClient = new OAuthClient(new URLConnectionClient())
+            try {
+                OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
+                TokenContext.instance.access_token = oAuthResponse.getAccessToken()
+                TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
+                TokenContext.instance.startTime = timeNow
+                TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
+            } catch (OAuthProblemException e) {
+                logger.error(e.message, e)
+                //发送请求成功了但是token验证错误
+                throw new AuthenticationException("token认证失败", e);
+            } catch (Exception e) {
+                logger.error(e.message, e)
+                //请求没有发送成功（400和401以外的异常）
+                throw new UnhandledException("token认证服务器系统异常", e);
+            }
+        } else {
+            logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
+            throw new AuthenticationException("grant_type not support!")
+        }
+        return TokenContext.instance
+    }
+
+    private CustomOAuthResourceResponse resource(String token, String url, Map<String, String> params, Map<String, String> headers) {
         //init headers
-        OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(getAccessToken().access_token).buildHeaderMessage();
+        OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(token).buildHeaderMessage();
         // add headers
         headers.each {
             bearerClientRequest.addHeader(it.key, it.value)
@@ -118,12 +123,7 @@ class OAuthJsonProxy implements InvocationHandler {
         // post request
         CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
         OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
-        CustomOAuthResourceResponse resourceResponse = oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
-        if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
-            logger.error("对${url}的访问未取得授权")
-            throw new AuthorizationException("对${url}的访问未取得授权")
-        }
-        return new HttpMessageWithHeader(resourceResponse.getResponseCode(), resourceResponse.getContentType(), resourceResponse.getBody(), resourceResponse.getHeaders());
+        return oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
     }
 
     @Override
@@ -133,7 +133,7 @@ class OAuthJsonProxy implements InvocationHandler {
 
         def serviceContext = ServiceContextHolder.getServiceContext()
 
-        if(serviceContext?.getCallId()){
+        if (serviceContext?.getCallId()) {
             MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext?.getCallId()))
         }
 
@@ -150,17 +150,32 @@ class OAuthJsonProxy implements InvocationHandler {
 
         logger.debug("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
 
-        HttpMessageWithHeader response = this.resource(remoteURL, params, context)
+        CustomOAuthResourceResponse resourceResponse = this.resource(getAccessToken().access_token, remoteURL, params, context)
+        if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
+            if (resourceResponse.getResponseCode() == 401) {
+                logger.debug("对${remoteURL}的访问未取得授权,有可能token已经过期，尝试重新获取token")
+                //重试一次
+                resourceResponse = this.resource(getNewAccessToken().access_token, remoteURL, params, context)
+                if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
+                    logger.error("对${remoteURL}的访问未取得授权")
+                    throw new AuthorizationException("对${remoteURL}的访问未取得授权")
+                }
+            } else {
+                logger.error("对${remoteURL}的访问未取得授权")
+                throw new AuthorizationException("对${remoteURL}的访问未取得授权")
+            }
+        }
 
+        HttpMessageWithHeader response = new HttpMessageWithHeader(resourceResponse.getResponseCode(), resourceResponse.getContentType(), resourceResponse.getBody(), resourceResponse.getHeaders())
         def result = proxyStrategy.getResult(method, response)
 
         def end = new Date()
         long millis = end.time - start.time
         def slow = ''
-        if(millis > 500) {
+        if (millis > 500) {
             slow = "${endl}SLOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${endl}"
             logger.warn("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
-        }else {
+        } else {
             logger.debug("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
         }
 
