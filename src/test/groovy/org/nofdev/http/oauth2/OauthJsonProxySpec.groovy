@@ -7,6 +7,7 @@ import org.mockserver.model.HttpResponse
 import org.nofdev.http.DefaultProxyStrategyImpl
 import org.nofdev.http.PoolingConnectionManagerFactory
 import org.nofdev.servicefacade.UnhandledException
+import spock.lang.Ignore
 import spock.lang.Specification
 /**
  * Created by Liutengfei on 2016/4/25.
@@ -268,9 +269,11 @@ class OauthJsonProxySpec extends Specification {
         then:
         thrown(UnhandledException)
     }
-    int markToken=0
+
+    @Ignore
     def "未完成测试代码_当访问资源时发现token已经过期就重新获取token"() {
         setup:
+        int markToken=0
         tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
         ).respond(
                 HttpResponse.response()
