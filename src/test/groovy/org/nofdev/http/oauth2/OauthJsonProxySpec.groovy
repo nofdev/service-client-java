@@ -1,12 +1,13 @@
 package org.nofdev.http.oauth2
-
 import groovy.json.JsonBuilder
 import org.mockserver.integration.ClientAndServer
+import org.mockserver.model.Header
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
 import org.nofdev.http.DefaultProxyStrategyImpl
 import org.nofdev.http.PoolingConnectionManagerFactory
 import org.nofdev.servicefacade.UnhandledException
+import spock.lang.Ignore
 import spock.lang.Specification
 /**
  * Created by Liutengfei on 2016/4/25.
@@ -21,6 +22,7 @@ class OauthJsonProxySpec extends Specification {
     private def secureTokenServerUrl
 
     def setup() {
+        println "---------------setup---------------------"
         TokenContext.instance.stopTime = 0 //保证每次测试重新获取 token TODO 要从内存中销毁 TokenContext 才合适
 
         //resource server
@@ -35,6 +37,7 @@ class OauthJsonProxySpec extends Specification {
     }
 
     def cleanup() {
+        println "---------------cleanup---------------------"
         TokenContext.instance.stopTime = 0 //保证每次测试重新获取 token TODO 要从内存中销毁 TokenContext 才合适
 
         tokenServer.stop()
@@ -133,7 +136,7 @@ class OauthJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
         )
-        OAuthConfig oAuthConfig = new OAuthConfig();
+        OAuthConfig oAuthConfig = new OAuthConfig()
         oAuthConfig.clientId = "test"
         oAuthConfig.clientSecret = "test"
         oAuthConfig.grantType = "client_credentials"
@@ -200,8 +203,8 @@ class OauthJsonProxySpec extends Specification {
         testFacadeService.method1();
         def tokenResult2 = TokenContext.instance.getAccess_token()
         expect:
-            tokenResult1=='111111111'
-            tokenResult2=='111111111'
+        tokenResult1 == '111111111'
+        tokenResult2 == '111111111'
 
     }
 
@@ -265,6 +268,53 @@ class OauthJsonProxySpec extends Specification {
         testFacadeService.sayHello()
         then:
         thrown(UnhandledException)
+    }
+
+    @Ignore
+    def "未完成测试代码_当访问资源时发现token已经过期就重新获取token"() {
+        setup:
+        int markToken=0
+        tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
+        ).respond(
+                HttpResponse.response()
+                        .withStatusCode(200)
+                        .withBody(new JsonBuilder([access_token: ++markToken, token_type: "bearer", expires_in: 3600]).toString())
+        )
+        resourceServer.when(
+                HttpRequest.request()
+                        .withHeader(Header.header("Authorization", "Bearer 1"))
+                        .withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/method1")
+        ).respond(
+                HttpResponse.response()
+                        .withStatusCode(401)
+                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
+        )
+        resourceServer.when(
+                HttpRequest.request()
+                        .withHeader(Header.header("Authorization", "Bearer 2"))
+                        .withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/method1")
+        ).respond(
+                HttpResponse.response()
+                        .withStatusCode(200)
+                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
+        )
+        OAuthConfig oAuthConfig = new OAuthConfig()
+        oAuthConfig.clientId = "test"
+        oAuthConfig.clientSecret = "test"
+        oAuthConfig.grantType = "client_credentials"
+        oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
+
+        def proxy = new OAuthJsonProxy(
+                DemoFacade.class,
+                oAuthConfig,
+                resourceUrl
+        )
+        def testFacadeService = proxy.getObject()
+        testFacadeService.method1();
+        def tokenResult1 = TokenContext.instance.getAccess_token()
+
+        expect:
+        tokenResult1 == '2'
     }
 }
 

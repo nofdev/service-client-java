@@ -75,9 +75,18 @@ class OAuthJsonProxy implements InvocationHandler {
         this(inter, oAuthConfig, new DefaultProxyStrategyImpl(url))
     }
 
-    public TokenContext getAccessToken() throws Exception {
+    public TokenContext getAccessToken() {
         logger.info("Getting access token.")
         if (TokenContext.instance.isExpire()) {
+            return getNewAccessToken()
+        } else {
+            // 什么也不做
+        }
+        logger.debug("The access token is ${TokenContext.instance.access_token}, and expires in ${TokenContext.instance.expires_in}")
+        return TokenContext.instance
+    }
+
+    private TokenContext getNewAccessToken() throws Exception {
             //todo 默认为client_credentials方式 待改造成4种都支持的
             if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
                 OAuthClientRequest request = OAuthClientRequest
@@ -109,16 +118,12 @@ class OAuthJsonProxy implements InvocationHandler {
                 logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
                 throw new AuthenticationException("grant_type not support!")
             }
-        } else {
-            // 什么也不做
-        }
-        logger.debug("The access token is ${TokenContext.instance.access_token}, and expires in ${TokenContext.instance.expires_in}")
         return TokenContext.instance
     }
 
-    private HttpMessageWithHeader resource(String url, Map<String, String> params, Map<String, String> headers) throws Exception {
+    private CustomOAuthResourceResponse resource(String token, String url, Map<String, String> params, Map<String, String> headers) {
         //init headers
-        OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(getAccessToken().access_token).buildHeaderMessage();
+        OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(token).buildHeaderMessage();
         // add headers
         headers.each {
             bearerClientRequest.addHeader(it.key, it.value)
@@ -130,12 +135,7 @@ class OAuthJsonProxy implements InvocationHandler {
         // post request
         CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
         OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
-        CustomOAuthResourceResponse resourceResponse = oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
-        if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
-            logger.error("对${url}的访问未取得授权")
-            throw new AuthorizationException("对${url}的访问未取得授权")
-        }
-        return new HttpMessageWithHeader(resourceResponse.getResponseCode(), resourceResponse.getContentType(), resourceResponse.getBody(), resourceResponse.getHeaders());
+        return oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
     }
 
     @Override
@@ -162,8 +162,23 @@ class OAuthJsonProxy implements InvocationHandler {
 
         logger.debug("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
 
-        HttpMessageWithHeader response = this.resource(remoteURL, params, context)
+        CustomOAuthResourceResponse resourceResponse = this.resource(getAccessToken().access_token, remoteURL, params, context)
+        if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
+            if (resourceResponse.getResponseCode() == 401) {
+                logger.debug("对${remoteURL}的访问未取得授权,有可能token已经过期，尝试重新获取token")
+                //重试一次
+                resourceResponse = this.resource(getNewAccessToken().access_token, remoteURL, params, context)
+                if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
+                    logger.error("对${remoteURL}的访问未取得授权")
+                    throw new AuthorizationException("对${remoteURL}的访问未取得授权")
+                }
+            } else {
+                logger.error("对${remoteURL}的访问未取得授权")
+                throw new AuthorizationException("对${remoteURL}的访问未取得授权")
+            }
+        }
 
+        HttpMessageWithHeader response = new HttpMessageWithHeader(resourceResponse.getResponseCode(), resourceResponse.getContentType(), resourceResponse.getBody(), resourceResponse.getHeaders())
         def result = proxyStrategy.getResult(method, response)
 
         def end = new Date()
