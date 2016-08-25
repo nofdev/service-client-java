@@ -44,7 +44,7 @@ class OauthJsonProxySpec extends Specification {
         resourceServer.stop()
     }
 
-
+    @Ignore
     def "测试入参和返回值"() {
         setup:
         tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
@@ -82,6 +82,7 @@ class OauthJsonProxySpec extends Specification {
         "getAllAttendUsers" | [new UserDTO(name: "tom", age: 10)] | '333333333' | 3600       | '222222222' | [new UserDTO(name: "tom", age: 10)] | [new UserDTO(name: "tom", age: 10)]
     }
 
+    @Ignore
     def "bugfix: 测试代理 https 请求, 对于不受信证书的 ssl 访问, 请使用复杂构造函数"() {
         setup:
         tokenServer.when(
@@ -121,6 +122,7 @@ class OauthJsonProxySpec extends Specification {
         "method1"           | []                                  | '111111111' | 3600       | '111111111' | "hello world"                       | "hello world"
     }
 
+    @Ignore
     def "token过期时自动获取新token"() {
         setup:
         tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
@@ -164,6 +166,7 @@ class OauthJsonProxySpec extends Specification {
         tokenResult2 == '2222222222'
     }
 
+    @Ignore
     def "token不过期的时候还是使用之前的token"() {
         setup:
         tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
@@ -208,6 +211,7 @@ class OauthJsonProxySpec extends Specification {
 
     }
 
+    @Ignore
     def "当client_id或client_secret验证错误时"() {
         setup:
         tokenServer.when(
@@ -244,6 +248,7 @@ class OauthJsonProxySpec extends Specification {
         thrown(AuthenticationException)
     }
 
+    @Ignore
     def "当token服务器宕机的时候"() {
         setup:
         resourceServer.when(HttpRequest.request().withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/sayHello")

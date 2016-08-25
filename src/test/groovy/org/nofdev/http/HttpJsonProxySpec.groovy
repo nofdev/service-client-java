@@ -6,6 +6,7 @@ import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
 import org.nofdev.servicefacade.ExceptionMessage
+import spock.lang.Ignore
 import spock.lang.Specification
 
 /**
@@ -30,6 +31,7 @@ class HttpJsonProxySpec extends Specification {
         mockServer.stop()
     }
 
+    @Ignore
     def "测试能否正常的代理一个远程接口"() {
         setup:
         mockServer.when(
@@ -53,6 +55,7 @@ class HttpJsonProxySpec extends Specification {
         "getAllAttendUsers" | [new UserDTO(name: "zhangsan", age: 10)] | [new UserDTO(name: "zhangsan", age: 10)] | [new UserDTO(name: "zhangsan", age: 10)]
     }
 
+    @Ignore
     def "bugfix: 测试代理 https 请求, 对于不受信证书的 ssl 访问, 请使用复杂构造函数"() {
         setup:
         mockServer.when(
@@ -75,6 +78,7 @@ class HttpJsonProxySpec extends Specification {
         "method1"           | []                                       | "hello world"                            | "hello world"
     }
 
+    @Ignore
     def "测试能否正常的代理一个远程接口抛出的异常"() {
         setup:
         def exceptionMessage = new ExceptionMessage(name: "org.nofdev.http.TestException", msg: "Test")
@@ -110,6 +114,7 @@ class HttpJsonProxySpec extends Specification {
 //        def testFacadeService = proxy.getObject()
 //	}
 
+    @Ignore
     def "测试代理策略接口"() {
         setup:
         url = "http://localhost:9999/facade/json/org.nofdev.http/Demo"
@@ -134,6 +139,7 @@ class HttpJsonProxySpec extends Specification {
         "sayHello"          | []                                       | null                                     | null
     }
 
+    @Ignore
     def "Bugfix，如果接口方法返回是void的话会报错"() {
         setup:
         mockServer.when(
@@ -152,6 +158,7 @@ class HttpJsonProxySpec extends Specification {
         result == null
     }
 
+    @Ignore
     def "测试远程服务器宕机的情况"(){
         setup:
         def proxy = new HttpJsonProxy(DemoFacade, url)

@@ -24,7 +24,7 @@ public class ExceptionUtil {
         try {
             Class<?> cl = Class.forName(name);
             Class[] params = {String.class};
-            Constructor constructor = cl.getConstructor(params);//找到异常类中带有一个String参数的 构造函数
+            Constructor constructor = cl.getConstructor(params);
             return (Throwable) constructor.newInstance(new Object[]{msg});
         } catch (Exception e) {
             e.printStackTrace();
@@ -36,7 +36,7 @@ public class ExceptionUtil {
         System.out.println("==============>"+exceptionMessage.getMsg());
         Class<?> cl = Class.forName(exceptionMessage.getName());
         Class[] params = {String.class};
-        Constructor constructor = cl.getConstructor(params);//找到异常类中带有一个String参数的 构造函数
+        Constructor constructor = cl.getConstructor(params);
         return (Throwable) constructor.newInstance(new Object[]{exceptionMessage.getMsg()});
     }
 }

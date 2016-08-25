@@ -2,10 +2,11 @@ apply plugin: 'java'
 apply plugin: 'groovy'
 apply plugin: 'idea'
 repositories {
-    jcenter()
+    mavenLocal()
+    maven { url "http://10.32.11.210:8081/nexus/content/groups/public" }
+    mavenCentral()
     maven { url "http://repo.spring.io/snapshot" }
     maven { url "http://repo.spring.io/milestone" }
-    maven { url "http://10.32.11.210:8081/nexus/content/groups/public" }
 }
 
 group = 'org.nofdev'
@@ -24,9 +25,10 @@ dependencies {
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.6.3"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.6.3"
     compile (group: 'org.nofdev', name: 'service-core', version: '1.0.3')
-    compile "org.nofdev:http-client-util:1.0.0"
+    compile "org.nofdev:http-client-util:1.0.3"
     compile 'org.apache.oltu.oauth2:org.apache.oltu.oauth2.client:1.0.1'
 
+    compile 'com.google.guava:guava:19.0'
     testCompile(
             "org.spockframework:spock-core:1.0-groovy-2.4",
             "org.mock-server:mockserver-netty:3.4"
