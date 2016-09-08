@@ -24,7 +24,7 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:2.6.3"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-joda:2.6.3"
     compile "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.6.3"
-    compile (group: 'org.nofdev', name: 'service-core', version: '1.0.3')
+    compile "org.nofdev:service-core:1.2.1"
     compile "org.nofdev:http-client-util:1.0.3"
     compile 'org.apache.oltu.oauth2:org.apache.oltu.oauth2.client:1.0.1'
 

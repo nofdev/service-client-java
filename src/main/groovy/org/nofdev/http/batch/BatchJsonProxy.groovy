@@ -66,7 +66,6 @@ public class BatchJsonProxy {
                 return null;
             }
         });
-        println "+++++++++" + proxy_target
     }
 
     public BatchJsonProxy(Class<?> inter, String url) throws Exception {
@@ -74,7 +73,7 @@ public class BatchJsonProxy {
     }
 
 
-    void batchExec(Consumer consumer) throws Throwable {
+    BatchResult batchExec(Consumer consumer) throws Throwable {
         consumer.accept(proxy_target);
 
         Date start = new Date();
@@ -103,19 +102,25 @@ public class BatchJsonProxy {
             Map<String, String> headers = serviceContextToMap(serviceContext);
             HttpMessageWithHeader response = httpClientUtil.postWithHeader(url, pairList, headers);
 
-            Object result = proxyStrategy.getResult(method, response);
+            BatchHttpJsonResponse httpJsonResponse = proxyStrategy.getResult(method, response) as BatchHttpJsonResponse;
 
             Date end = new Date();
             long millis = end.getTime() - start.getTime();
             String slow = "";
             if (millis > 500) {
                 slow = "${lineSeparator}SLOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${lineSeparator}";
-                logger.warn("${inter}.${method?.getName()} result($slow$millis ms$slow): ${lineSeparator}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}");
+                logger.warn("${inter}.${method?.getName()} result($slow$millis ms$slow): ${lineSeparator}${ObjectMapperFactory.createObjectMapper().writeValueAsString(httpJsonResponse)}");
             } else {
-                logger.debug("${inter}.${method?.getName()} result($slow$millis ms$slow): ${lineSeparator}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}");
+                logger.debug("${inter}.${method?.getName()} result($slow$millis ms$slow): ${lineSeparator}${ObjectMapperFactory.createObjectMapper().writeValueAsString(httpJsonResponse)}");
             }
 
-            System.out.println(result);
+            BatchResult batchResult = new BatchResult()
+            batchResult.val = httpJsonResponse.val
+            batchResult.err = new HashMap<>()
+            httpJsonResponse?.err?.children?.each {
+                batchResult.err.put(it.key, ExceptionUtil.getThrowableInstance(it.value))
+            }
+            return batchResult
         }
     }
 
@@ -127,5 +132,6 @@ public class BatchJsonProxy {
         }
         return context;
     }
+
 
 }

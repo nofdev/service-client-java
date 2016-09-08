@@ -33,7 +33,6 @@ public class ExceptionUtil {
     }
 
     public static Throwable getThrowableInstance(ExceptionMessage exceptionMessage) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        System.out.println("==============>"+exceptionMessage.getMsg());
         Class<?> cl = Class.forName(exceptionMessage.getName());
         Class[] params = {String.class};
         Constructor constructor = cl.getConstructor(params);
