@@ -9,6 +9,8 @@ import org.apache.oltu.oauth2.client.response.OAuthJSONAccessTokenResponse
 import org.apache.oltu.oauth2.common.OAuth
 import org.apache.oltu.oauth2.common.exception.OAuthProblemException
 import org.apache.oltu.oauth2.common.message.types.GrantType
+import org.nofdev.exception.AuthenticationException
+import org.nofdev.exception.AuthorizationException
 import org.nofdev.http.*
 import org.nofdev.servicefacade.ServiceContext
 import org.nofdev.servicefacade.ServiceContextHolder
@@ -20,6 +22,7 @@ import org.slf4j.MDC
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
+
 /**
  * Created by HouDongQiang on 2016/3/10.
  * for OAuth proxy handler. 用于OAuth认证的代理器
@@ -87,37 +90,37 @@ class OAuthJsonProxy implements InvocationHandler {
     }
 
     private TokenContext getNewAccessToken() throws Exception {
-            //todo 默认为client_credentials方式 待改造成4种都支持的
-            if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
-                OAuthClientRequest request = OAuthClientRequest
-                        .tokenLocation(oAuthConfig.authenticationServerUrl)
-                        .setGrantType(GrantType.CLIENT_CREDENTIALS)
-                        .setClientId(oAuthConfig.getClientId())
-                        .setClientSecret(oAuthConfig.getClientSecret())
-                        .buildBodyMessage();
+        //todo 默认为client_credentials方式 待改造成4种都支持的
+        if (GrantType.CLIENT_CREDENTIALS.toString().equals(oAuthConfig.grantType)) {
+            OAuthClientRequest request = OAuthClientRequest
+                    .tokenLocation(oAuthConfig.authenticationServerUrl)
+                    .setGrantType(GrantType.CLIENT_CREDENTIALS)
+                    .setClientId(oAuthConfig.getClientId())
+                    .setClientSecret(oAuthConfig.getClientSecret())
+                    .buildBodyMessage();
 
-                long timeNow = new Date().getTime();
-                //TODO 这里每次都 new 一个不合适
-                OAuthClient oAuthClient = new OAuthClient(new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig))
-                try {
-                    OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
-                    TokenContext.instance.access_token = oAuthResponse.getAccessToken()
-                    TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
-                    TokenContext.instance.startTime = timeNow
-                    TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
-                } catch (OAuthProblemException e) {
-                    logger.error(e.message, e)
-                    //发送请求成功了但是token验证错误
-                    throw new AuthenticationException("token认证失败", e);
-                } catch (Exception e) {
-                    logger.error(e.message, e)
-                    //请求没有发送成功（400和401以外的异常）
-                    throw new UnhandledException("token认证服务器系统异常", e);
-                }
-            } else {
-                logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
-                throw new AuthenticationException("grant_type not support!")
+            long timeNow = new Date().getTime();
+            //TODO 这里每次都 new 一个不合适
+            OAuthClient oAuthClient = new OAuthClient(new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig))
+            try {
+                OAuthJSONAccessTokenResponse oAuthResponse = oAuthClient.accessToken(request, OAuthJSONAccessTokenResponse.class)
+                TokenContext.instance.access_token = oAuthResponse.getAccessToken()
+                TokenContext.instance.expires_in = oAuthResponse.getExpiresIn()
+                TokenContext.instance.startTime = timeNow
+                TokenContext.instance.stopTime = timeNow + oAuthResponse.getExpiresIn() * 1000
+            } catch (OAuthProblemException e) {
+                logger.error(e.message, e)
+                //发送请求成功了但是token验证错误
+                throw new AuthenticationException("token认证失败", e);
+            } catch (Exception e) {
+                logger.error(e.message, e)
+                //请求没有发送成功（400和401以外的异常）
+                throw new UnhandledException("token认证服务器系统异常", e);
             }
+        } else {
+            logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
+            throw new AuthenticationException("grant_type not support!")
+        }
         return TokenContext.instance
     }
 
@@ -145,7 +148,7 @@ class OAuthJsonProxy implements InvocationHandler {
 
         def serviceContext = ServiceContextHolder.getServiceContext()
 
-        if(serviceContext?.getCallId()){
+        if (serviceContext?.getCallId()) {
             MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext?.getCallId()))
         }
 
@@ -184,10 +187,10 @@ class OAuthJsonProxy implements InvocationHandler {
         def end = new Date()
         long millis = end.time - start.time
         def slow = ''
-        if(millis > 500) {
+        if (millis > 500) {
             slow = "${endl}SLOW!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!${endl}"
             logger.warn("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
-        }else {
+        } else {
             logger.debug("${inter}.${method?.getName()} result($slow$millis ms$slow): ${endl}${ObjectMapperFactory.createObjectMapper().writeValueAsString(result)}")
         }
 
@@ -210,17 +213,16 @@ class OAuthJsonProxy implements InvocationHandler {
     }
 
 
-
-    private String paramsToQueryString(Map<String,String> params){
+    private String paramsToQueryString(Map<String, String> params) {
         StringBuilder sb = new StringBuilder();
         for (def entry : params.entrySet()) {
             if (sb.length() > 0) {
                 sb.append('&');
             }
-            sb.append(URLEncoder.encode(entry.key,'UTF-8'));
+            sb.append(URLEncoder.encode(entry.key, 'UTF-8'));
             if (entry.value) {
                 sb.append('=');
-                sb.append(URLEncoder.encode(entry.value,'UTF-8'));
+                sb.append(URLEncoder.encode(entry.value, 'UTF-8'));
             }
         }
         return sb.toString();
