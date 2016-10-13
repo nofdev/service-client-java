@@ -111,9 +111,9 @@ public class HttpJsonProxy implements InvocationHandler {
     private Map<String, String> serviceContextToMap(ServiceContext serviceContext) {
         Map<String, String> context = new HashMap<>();
         ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper()
-        if (serviceContext != null && serviceContext.getCallId() != null) {
-            context.put(ServiceContext.CALLID.toString(), objectMapper.writeValueAsString(serviceContext.getCallId()));
-        }
+        serviceContext?.forEach({String k,Object v->
+            context.put(k, objectMapper.writeValueAsString(v));
+        })
         context
     }
 

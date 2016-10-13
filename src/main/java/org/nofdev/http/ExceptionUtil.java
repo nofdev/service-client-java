@@ -1,5 +1,7 @@
 package org.nofdev.http;
 
+import groovy.transform.CompileStatic;
+import org.nofdev.servicefacade.AbstractBusinessException;
 import org.nofdev.servicefacade.ExceptionMessage;
 
 import java.lang.reflect.Constructor;
@@ -8,6 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 /**
  * Created by liuyang on 2014/6/11.
  */
+@CompileStatic
 public class ExceptionUtil {
 
     public static Boolean isExistClass(String name) {
@@ -36,6 +39,10 @@ public class ExceptionUtil {
         Class<?> cl = Class.forName(exceptionMessage.getName());
         Class[] params = {String.class};
         Constructor constructor = cl.getConstructor(params);
-        return (Throwable) constructor.newInstance(new Object[]{exceptionMessage.getMsg()});
+        Throwable throwable = (Throwable) constructor.newInstance(new Object[]{exceptionMessage.getMsg()});
+        if (throwable instanceof AbstractBusinessException) {
+            ((AbstractBusinessException) throwable).setDatail(exceptionMessage.getDatail());
+        }
+        return throwable;
     }
 }
