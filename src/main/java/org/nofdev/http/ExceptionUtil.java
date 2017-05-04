@@ -2,10 +2,10 @@ package org.nofdev.http;
 
 import groovy.transform.CompileStatic;
 import org.nofdev.servicefacade.AbstractBusinessException;
+import org.nofdev.servicefacade.ErrorDeserializedException;
 import org.nofdev.servicefacade.ExceptionMessage;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 
 /**
  * Created by liuyang on 2014/6/11.
@@ -19,6 +19,7 @@ public class ExceptionUtil {
             Class<?> cl = Class.forName(name);
             flag = true;
         } catch (Exception e) {
+            e.printStackTrace();
         }
         return flag;
     }
@@ -35,11 +36,17 @@ public class ExceptionUtil {
         }
     }
 
-    public static Throwable getThrowableInstance(ExceptionMessage exceptionMessage) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
-        Class<?> cl = Class.forName(exceptionMessage.getName());
-        Class[] params = {String.class};
-        Constructor constructor = cl.getConstructor(params);
-        Throwable throwable = (Throwable) constructor.newInstance(new Object[]{exceptionMessage.getMsg()});
+    public static Throwable getThrowableInstance(ExceptionMessage exceptionMessage) {
+        Throwable throwable = null;
+        try {
+            Class<?> cl = Class.forName(exceptionMessage.getName());
+            Class[] params = {String.class};
+            Constructor constructor = cl.getConstructor(params);
+            throwable = (Throwable) constructor.newInstance(new Object[]{exceptionMessage.getMsg()});
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ErrorDeserializedException(e);
+        }
         if (throwable instanceof AbstractBusinessException) {
             ((AbstractBusinessException) throwable).setDatail(exceptionMessage.getDatail());
         }
