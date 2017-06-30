@@ -79,9 +79,9 @@ public class BatchJsonProxy {
         Date start = new Date();
         final String lineSeparator = System.getProperty("line.separator");
         ServiceContext serviceContext = ServiceContextHolder.getServiceContext();
-        if (serviceContext != null && serviceContext.getCallId() != null) {
-            MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext.getCallId()));
-        }
+        serviceContext.generatCallIdIfAbsente()
+        MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext.getCallId()))
+
 
         ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper();
 

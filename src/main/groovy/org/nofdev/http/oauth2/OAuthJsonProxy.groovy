@@ -147,10 +147,9 @@ class OAuthJsonProxy implements InvocationHandler {
         final endl = System.properties.'line.separator'
 
         def serviceContext = ServiceContextHolder.getServiceContext()
+        serviceContext.generatCallIdIfAbsente()
+        MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext.getCallId()))
 
-        if (serviceContext?.getCallId()) {
-            MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext?.getCallId()))
-        }
 
         if ("hashCode".equals(method.getName())) {
             return inter.hashCode();
