@@ -12,6 +12,14 @@ Please refer `HttpJsonProxySpec`.
 
 Notice: You must include the same interface classes with server side in your client side project. 
 
-## TODO
+# Maven地址
 
-Refer: test code
+```
+稳定版
+<dependency>
+    <groupId>org.nofdev</groupId>
+    <artifactId>service-client-java</artifactId>
+    <version>1.3.5</version>
+</dependency>
+
+```
