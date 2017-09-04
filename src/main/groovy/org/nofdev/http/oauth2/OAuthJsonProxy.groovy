@@ -29,7 +29,7 @@ import java.lang.reflect.Proxy
  */
 @CompileStatic
 class OAuthJsonProxy implements InvocationHandler {
-    private static final Logger logger = LoggerFactory.getLogger(OAuthJsonProxy.class);
+    private static final Logger logger = LoggerFactory.getLogger(OAuthJsonProxy.class)
 
     private Class<?> inter
     private ProxyStrategy proxyStrategy
@@ -37,7 +37,7 @@ class OAuthJsonProxy implements InvocationHandler {
     private DefaultRequestConfig defaultRequestConfig
     private OAuthConfig oAuthConfig
 
-    public OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy, PoolingConnectionManagerFactory poolingConnectionManagerFactory, DefaultRequestConfig defaultRequestConfig) {
+    OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy, PoolingConnectionManagerFactory poolingConnectionManagerFactory, DefaultRequestConfig defaultRequestConfig) {
         this.inter = inter
         this.proxyStrategy = proxyStrategy
         this.oAuthConfig = oAuthConfig
@@ -49,7 +49,7 @@ class OAuthJsonProxy implements InvocationHandler {
                 e.printStackTrace()
             }
         } else {
-            this.poolingConnectionManagerFactory = poolingConnectionManagerFactory;
+            this.poolingConnectionManagerFactory = poolingConnectionManagerFactory
         }
         if (defaultRequestConfig == null) {
             this.defaultRequestConfig = new DefaultRequestConfig()
@@ -64,7 +64,7 @@ class OAuthJsonProxy implements InvocationHandler {
      * @param oAuthConfig
      * @param proxyStrategy
      */
-    public OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy) {
+    OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy) {
         this(inter, oAuthConfig, proxyStrategy, null, null)
     }
 
@@ -74,11 +74,11 @@ class OAuthJsonProxy implements InvocationHandler {
      * @param oAuthConfig
      * @param url
      */
-    public OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, String url) {
+    OAuthJsonProxy(Class<?> inter, OAuthConfig oAuthConfig, String url) {
         this(inter, oAuthConfig, new DefaultProxyStrategyImpl(url))
     }
 
-    public TokenContext getAccessToken() {
+    TokenContext getAccessToken() {
         logger.info("Getting access token.")
         if (TokenContext.instance.isExpire()) {
             return getNewAccessToken()
@@ -97,9 +97,9 @@ class OAuthJsonProxy implements InvocationHandler {
                     .setGrantType(GrantType.CLIENT_CREDENTIALS)
                     .setClientId(oAuthConfig.getClientId())
                     .setClientSecret(oAuthConfig.getClientSecret())
-                    .buildBodyMessage();
+                    .buildBodyMessage()
 
-            long timeNow = new Date().getTime();
+            long timeNow = new Date().getTime()
             //TODO 这里每次都 new 一个不合适
             OAuthClient oAuthClient = new OAuthClient(new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig))
             try {
@@ -111,11 +111,11 @@ class OAuthJsonProxy implements InvocationHandler {
             } catch (OAuthProblemException e) {
                 logger.error(e.message, e)
                 //发送请求成功了但是token验证错误
-                throw new AuthenticationException("token认证失败", e);
+                throw new AuthenticationException("token认证失败", e)
             } catch (Exception e) {
                 logger.error(e.message, e)
                 //请求没有发送成功（400和401以外的异常）
-                throw new UnhandledException("token认证服务器系统异常", e);
+                throw new UnhandledException("token认证服务器系统异常", e)
             }
         } else {
             logger.error("现在只支持 ${GrantType.CLIENT_CREDENTIALS.toString()} 方式")
@@ -126,7 +126,7 @@ class OAuthJsonProxy implements InvocationHandler {
 
     private CustomOAuthResourceResponse resource(String token, String url, Map<String, String> params, Map<String, String> headers) {
         //init headers
-        OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(token).buildHeaderMessage();
+        OAuthClientRequest bearerClientRequest = new OAuthBearerClientRequest(url).setAccessToken(token).buildHeaderMessage()
         // add headers
         headers.each {
             bearerClientRequest.addHeader(it.key, it.value)
@@ -137,8 +137,8 @@ class OAuthJsonProxy implements InvocationHandler {
 
         // post request
         CustomURLConnectionClient customURLConnectionClient = new CustomURLConnectionClient(poolingConnectionManagerFactory, defaultRequestConfig)
-        OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient);
-        return oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class);
+        OAuthClient oAuthClient = new OAuthClient(customURLConnectionClient)
+        return oAuthClient.resource(bearerClientRequest, OAuth.HttpMethod.POST, CustomOAuthResourceResponse.class)
     }
 
     @Override
@@ -146,23 +146,23 @@ class OAuthJsonProxy implements InvocationHandler {
         def start = new Date()
         final endl = System.properties.'line.separator'
 
-        def serviceContext = ServiceContextHolder.getServiceContext()
+        ServiceContext serviceContext = ServiceContextHolder.getServiceContext()
         serviceContext.generateCallIdIfAbsent()
         MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext.getCallId()))
 
 
         if ("hashCode".equals(method.getName())) {
-            return inter.hashCode();
+            return inter.hashCode()
         }
         if ("toString".equals(method.getName())) {
-            return inter.toString();
+            return inter.toString()
         }
 
-        String remoteURL = proxyStrategy.getRemoteURL(inter, method);
+        String remoteURL = proxyStrategy.getRemoteURL(inter, method)
         Map<String, String> params = proxyStrategy.getParams(args)
         Map<String, String> context = serviceContextToMap(serviceContext)
 
-        logger.debug("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}");
+        logger.debug("RPC call: ${remoteURL} ${ObjectMapperFactory.createObjectMapper().writeValueAsString(params)}")
 
         CustomOAuthResourceResponse resourceResponse = this.resource(getAccessToken().access_token, remoteURL, params, context)
         if (resourceResponse.getResponseCode() == 400 || resourceResponse.getResponseCode() == 401) {
@@ -198,37 +198,37 @@ class OAuthJsonProxy implements InvocationHandler {
 
 
     private Map<String, String> serviceContextToMap(ServiceContext serviceContext) {
-        Map<String, String> context = new HashMap<>();
+        Map<String, String> context = new HashMap<>()
         ObjectMapper objectMapper = ObjectMapperFactory.createObjectMapper()
         serviceContext?.forEach({String k,Object v->
             if(v instanceof String){
-                context.put(k, v);
+                context.put(k, v)
             }else{
-                context.put(k, objectMapper.writeValueAsString(v));
+                context.put(k, objectMapper.writeValueAsString(v))
             }
         })
         context
     }
 
-    public Object getObject() {
-        Class<?>[] interfaces = [inter];
-        return Proxy.newProxyInstance(inter.getClassLoader(), interfaces, this);
+    Object getObject() {
+        Class<?>[] interfaces = [inter]
+        return Proxy.newProxyInstance(inter.getClassLoader(), interfaces, this)
     }
 
 
     private String paramsToQueryString(Map<String, String> params) {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder()
         for (def entry : params.entrySet()) {
             if (sb.length() > 0) {
-                sb.append('&');
+                sb.append('&')
             }
-            sb.append(URLEncoder.encode(entry.key, 'UTF-8'));
+            sb.append(URLEncoder.encode(entry.key, 'UTF-8'))
             if (entry.value) {
-                sb.append('=');
-                sb.append(URLEncoder.encode(entry.value, 'UTF-8'));
+                sb.append('=')
+                sb.append(URLEncoder.encode(entry.value, 'UTF-8'))
             }
         }
-        return sb.toString();
+        return sb.toString()
     }
 
 }

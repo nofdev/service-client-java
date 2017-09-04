@@ -71,7 +71,7 @@ public class HttpJsonProxy implements InvocationHandler {
         def start = new Date()
         final endl = System.properties.'line.separator'
 
-        def serviceContext = ServiceContextHolder.getServiceContext()
+        ServiceContext serviceContext = ServiceContextHolder.getServiceContext()
         serviceContext.generateCallIdIfAbsent()
         MDC.put(ServiceContext.CALLID.toString(), ObjectMapperFactory.createObjectMapper().writeValueAsString(serviceContext.getCallId()))
 
