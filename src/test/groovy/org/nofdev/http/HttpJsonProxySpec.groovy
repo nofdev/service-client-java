@@ -7,6 +7,7 @@ import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
 import org.nofdev.client.RpcClient
+import org.nofdev.client.RpcProxy
 import org.nofdev.client.http.DefaultProxyStrategyImpl
 import org.nofdev.client.http.HttpCaller
 import org.nofdev.servicefacade.ExceptionMessage
@@ -45,6 +46,7 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: null, err: null]).toString())
         )
+//        DemoFacade testFacadeService=new RpcProxy<DemoFacade>(DemoFacade,new HttpCaller(url)).getObject()
         DemoFacade testFacadeService = RpcClient.build(DemoFacade,new HttpCaller(url))
         def result = testFacadeService.sayHello()
 
