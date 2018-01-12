@@ -1,8 +1,10 @@
-package org.nofdev.http
+package org.nofdev.client.http
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JavaType
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.nofdev.http.ExceptionUtil
+import org.nofdev.http.HttpMessageSimple
 import org.nofdev.servicefacade.HttpJsonResponse
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory

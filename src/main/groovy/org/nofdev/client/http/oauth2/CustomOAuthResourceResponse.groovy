@@ -1,4 +1,4 @@
-package org.nofdev.http.oauth2
+package org.nofdev.client.http.oauth2
 
 import org.apache.oltu.oauth2.client.response.OAuthResourceResponse
 /**

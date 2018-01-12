@@ -1,4 +1,4 @@
-package org.nofdev.http.oauth2
+package org.nofdev.client.http.oauth2
 
 import org.apache.oltu.oauth2.client.HttpClient
 import org.apache.oltu.oauth2.client.request.OAuthClientRequest
@@ -22,23 +22,23 @@ import java.security.NoSuchAlgorithmException
  * Created by Liutengfei on 2016/4/21 0021.
  */
 class CustomURLConnectionClient implements HttpClient {
-    private static Logger logger = LoggerFactory.getLogger(CustomURLConnectionClient.class);
+    private static Logger logger = LoggerFactory.getLogger(CustomURLConnectionClient.class)
 
-    private PoolingConnectionManagerFactory connectionManagerFactory;
-    private DefaultRequestConfig defaultRequestConfig;
+    private PoolingConnectionManagerFactory connectionManagerFactory
+    private DefaultRequestConfig defaultRequestConfig
 
-    public CustomURLConnectionClient(PoolingConnectionManagerFactory connectionManagerFactory, DefaultRequestConfig defaultRequestConfig) throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
-        this.connectionManagerFactory = connectionManagerFactory;
-        this.defaultRequestConfig = defaultRequestConfig;
+    CustomURLConnectionClient(PoolingConnectionManagerFactory connectionManagerFactory, DefaultRequestConfig defaultRequestConfig) throws KeyStoreException, NoSuchAlgorithmException, KeyManagementException {
+        this.connectionManagerFactory = connectionManagerFactory
+        this.defaultRequestConfig = defaultRequestConfig
     }
 
-    public CustomURLConnectionClient(PoolingConnectionManagerFactory connectionManagerFactory) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
-        this(connectionManagerFactory, new DefaultRequestConfig());
+    CustomURLConnectionClient(PoolingConnectionManagerFactory connectionManagerFactory) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+        this(connectionManagerFactory, new DefaultRequestConfig())
     }
 
 
     @Override
-    def <T extends OAuthClientResponse> T execute(OAuthClientRequest request, Map<String, String> headers, String requestMethod, Class<T> responseClass) throws OAuthSystemException, OAuthProblemException {
+    <T extends OAuthClientResponse> T execute(OAuthClientRequest request, Map<String, String> headers, String requestMethod, Class<T> responseClass) throws OAuthSystemException, OAuthProblemException {
         HttpMessageWithHeader httpMessageWithHeader = new HttpClientUtil(connectionManagerFactory, defaultRequestConfig).postWithHeader(request.locationUri, queryStringToParams(request.body), request.headers)
         if (responseClass.isAssignableFrom(OAuthJSONAccessTokenResponse.class)) {
             return OAuthClientResponseFactory.createJSONTokenResponse(httpMessageWithHeader.body, httpMessageWithHeader.contentType, httpMessageWithHeader.statusCode)

@@ -1,39 +1,42 @@
 package org.nofdev.http.oauth2
 
 import groovy.json.JsonBuilder
-import jdk.nashorn.internal.ir.annotations.Ignore
 import org.mockserver.integration.ClientAndServer
-import org.mockserver.model.Header
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
+import org.nofdev.client.http.oauth2.OAuthConfig
+import org.nofdev.client.http.oauth2.OAuthHttpCaller
+import org.nofdev.client.http.oauth2.TokenContext
 import org.nofdev.exception.AuthenticationException
-import org.nofdev.http.DefaultProxyStrategyImpl
+import org.nofdev.client.http.DefaultProxyStrategyImpl
 import org.nofdev.http.PoolingConnectionManagerFactory
+import org.nofdev.client.RpcProxy
 import org.nofdev.servicefacade.UnhandledException
 import spock.lang.Specification
+
 /**
  * Created by Liutengfei on 2016/4/25.
  */
 class OauthJsonProxySpec extends Specification {
     private ClientAndServer resourceServer
-    private def resourceUrl
-    private def secureResourceUrl
+    private String resourceUrl
+    private String secureResourceUrl
 
     private ClientAndServer tokenServer
-    private def tokenServerUrl
-    private def secureTokenServerUrl
+    private String tokenServerUrl
+    private String secureTokenServerUrl
 
     def setup() {
         println "---------------setup---------------------"
         TokenContext.instance.stopTime = 0 //保证每次测试重新获取 token TODO 要从内存中销毁 TokenContext 才合适
 
         //resource server
-        resourceServer = ClientAndServer.startClientAndServer(2016,8444)
+        resourceServer = ClientAndServer.startClientAndServer(2016, 8444)
         resourceUrl = "http://localhost:2016"
         secureResourceUrl = "https://localhost:8444"
 
         //token server
-        tokenServer = ClientAndServer.startClientAndServer(9527,8443)
+        tokenServer = ClientAndServer.startClientAndServer(9527, 8443)
         tokenServerUrl = "http://localhost:9527/oauth/token"
         secureTokenServerUrl = "https://localhost:8443/oauth/token"
     }
@@ -67,13 +70,10 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
 
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                resourceUrl
-        )
+
+        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
         def testFacadeService = proxy.getObject()
-        def returnResult = testFacadeService."${method}"(*args);
+        def returnResult = testFacadeService."${method}"(*args)
         expect:
         returnResult == exp
         where:
@@ -106,20 +106,14 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "${secureTokenServerUrl}"
 
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                new DefaultProxyStrategyImpl(secureResourceUrl),
-                new PoolingConnectionManagerFactory(true),
-                null
-        )
+        def proxy = new RpcProxy(DemoFacade.class,new OAuthHttpCaller(oAuthConfig, new DefaultProxyStrategyImpl(secureResourceUrl), new PoolingConnectionManagerFactory(true), null))
         def testFacadeService = proxy.getObject()
-        def returnResult = testFacadeService."${method}"(*args);
+        def returnResult = testFacadeService."${method}"(*args)
         expect:
         returnResult == exp
         where:
-        method              | args                                | token       | expires_in | tokenExp    | val                                 | exp
-        "method1"           | []                                  | '111111111' | 3600       | '111111111' | "hello world"                       | "hello world"
+        method    | args | token       | expires_in | tokenExp    | val           | exp
+        "method1" | []   | '111111111' | 3600       | '111111111' | "hello world" | "hello world"
     }
 
     def "token过期时自动获取新token"() {
@@ -143,13 +137,12 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
 
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                resourceUrl
-        )
-        def testFacadeService = proxy.getObject()
-        testFacadeService.method1();
+
+
+        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
+        def testFacadeService = proxy.getObject() as DemoFacade
+
+        testFacadeService.method1()
         def tokenResult1 = TokenContext.instance.getAccess_token()
         sleep(3000)
         tokenServer.reset()
@@ -185,13 +178,12 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
 
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                resourceUrl
-        )
-        def testFacadeService = proxy.getObject()
-        testFacadeService.method1();
+
+        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
+        def testFacadeService = proxy.getObject() as DemoFacade
+
+
+        testFacadeService.method1()
         def tokenResult1 = TokenContext.instance.getAccess_token()
         sleep(1)
         tokenServer.reset()
@@ -233,12 +225,9 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "http://localhost:9527/oauth/token"
 
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                resourceUrl
-        )
-        def testFacadeService = proxy.getObject()
+        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
+        def testFacadeService = proxy.getObject() as DemoFacade
+
         when:
         testFacadeService.sayHello()
         then:
@@ -259,63 +248,59 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "http://localhost:1234/oauth/token"
 
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                resourceUrl
-        )
-        def testFacadeService = proxy.getObject()
+        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
+        def testFacadeService = proxy.getObject() as DemoFacade
+
         when:
         testFacadeService.sayHello()
         then:
         thrown(UnhandledException)
     }
 
-    @Ignore
-    def "未完成测试代码_当访问资源时发现token已经过期就重新获取token"() {
-        setup:
-        int markToken=0
-        tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
-        ).respond(
-                HttpResponse.response()
-                        .withStatusCode(200)
-                        .withBody(new JsonBuilder([access_token: ++markToken, token_type: "bearer", expires_in: 3600]).toString())
-        )
-        resourceServer.when(
-                HttpRequest.request()
-                        .withHeader(Header.header("Authorization", "Bearer 1"))
-                        .withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/method1")
-        ).respond(
-                HttpResponse.response()
-                        .withStatusCode(401)
-                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
-        )
-        resourceServer.when(
-                HttpRequest.request()
-                        .withHeader(Header.header("Authorization", "Bearer 2"))
-                        .withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/method1")
-        ).respond(
-                HttpResponse.response()
-                        .withStatusCode(200)
-                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
-        )
-        OAuthConfig oAuthConfig = new OAuthConfig()
-        oAuthConfig.clientId = "test"
-        oAuthConfig.clientSecret = "test"
-        oAuthConfig.grantType = "client_credentials"
-        oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
-
-        def proxy = new OAuthJsonProxy(
-                DemoFacade.class,
-                oAuthConfig,
-                resourceUrl
-        )
-        def testFacadeService = proxy.getObject()
-        testFacadeService.method1();
-        def tokenResult1 = TokenContext.instance.getAccess_token()
-
-        expect:
-        tokenResult1 == '2'
-    }
+//    @Ignore
+//    def "未完成测试代码_当访问资源时发现token已经过期就重新获取token"() {
+//        setup:
+//        int markToken = 0
+//        tokenServer.when(HttpRequest.request().withURL("${tokenServerUrl}")
+//        ).respond(
+//                HttpResponse.response()
+//                        .withStatusCode(200)
+//                        .withBody(new JsonBuilder([access_token: ++markToken, token_type: "bearer", expires_in: 3600]).toString())
+//        )
+//        resourceServer.when(
+//                HttpRequest.request()
+//                        .withHeader(Header.header("Authorization", "Bearer 1"))
+//                        .withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/method1")
+//        ).respond(
+//                HttpResponse.response()
+//                        .withStatusCode(401)
+//                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
+//        )
+//        resourceServer.when(
+//                HttpRequest.request()
+//                        .withHeader(Header.header("Authorization", "Bearer 2"))
+//                        .withURL("${resourceUrl}/facade/json/org.nofdev.http.oauth2/Demo/method1")
+//        ).respond(
+//                HttpResponse.response()
+//                        .withStatusCode(200)
+//                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: 'hello world', err: null]).toString())
+//        )
+//        OAuthConfig oAuthConfig = new OAuthConfig()
+//        oAuthConfig.clientId = "test"
+//        oAuthConfig.clientSecret = "test"
+//        oAuthConfig.grantType = "client_credentials"
+//        oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
+//
+//
+//        LinkedList list = [new OAuthHttpCaller(oAuthConfig, resourceUrl)]
+//        def proxy = new RpcProxy(DemoFacade.class, list)
+//        def testFacadeService = proxy.getObject() as DemoFacade
+//
+//        testFacadeService.method1()
+//        def tokenResult1 = TokenContext.instance.getAccess_token()
+//
+//        expect:
+//        tokenResult1 == '2'
+//    }
 }
 

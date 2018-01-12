@@ -1,0 +1,67 @@
+apply plugin: 'groovy'
+apply plugin: "java"
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+apply plugin: "maven-publish"
+
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+[compileJava, compileTestJava, compileGroovy, compileTestGroovy]*.options*.encoding = 'UTF-8'
+
+
+eclipse {
+    classpath {
+        containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
+        containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8'
+    }
+}
+
+jar {
+    baseName = "$artifactId"
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+task sourceJar(type: Jar) {
+    classifier = 'sources'
+    archivesBaseName = "$artifactId"
+    from sourceSets.main.allSource
+}
+
+//  ./gradlew assemble
+artifacts {
+    archives jar
+    archives sourceJar
+}
+
+//   ./gradlew publish
+publishing {
+    publications {
+        common(MavenPublication) {
+
+            groupId "${project.groupId}"
+            artifactId "${project.artifactId}"
+            version "${project.version}"
+
+            from components.java
+
+            artifact sourceJar
+        }
+    }
+    repositories {
+        maven {
+            if (project.version.endsWith('-SNAPSHOT')) {
+                url = "$mavenSnapshotURI"
+            } else {
+                url = "$mavenReleaseURI"
+            }
+            credentials {
+                username "$mavenUsername"
+                password "$mavenPassword"
+            }
+        }
+    }
+}

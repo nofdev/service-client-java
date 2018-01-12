@@ -1,24 +1,22 @@
-apply plugin: 'java'
+buildscript {
+    repositories {
+        mavenLocal()
+        maven { url "https://nexus.yintai.com/nexus/content/groups/public" }
+        mavenCentral()
+    }
+}
+
 apply plugin: 'groovy'
-apply plugin: 'idea'
+apply plugin: "java"
+
 repositories {
     mavenLocal()
+    maven { url 'http://maven.aliyun.com/nexus/content/groups/public/' }
+    maven { url 'https://nexus.yintai.com/nexus/content/groups/public/' }
     mavenCentral()
-    jcenter()
     maven { url "http://repo.spring.io/snapshot" }
     maven { url "http://repo.spring.io/milestone" }
-    maven { url 'http://nexus.yintai.org:8081/nexus/content/groups/public' }
 }
-
-group = 'org.nofdev'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
-configurations.all {
-    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
-}
-
-[compileJava, compileTestJava, compileGroovy, compileTestGroovy]*.options*.encoding = 'UTF-8'
 
 dependencies {
     compile "org.codehaus.groovy:groovy-all:2.4.4"
@@ -36,176 +34,8 @@ dependencies {
             "org.mock-server:mockserver-netty:3.4"
     )
 }
-
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.5'
+    gradleVersion = '2.7'
 }
 
-apply plugin: 'maven-publish'
-apply plugin: 'signing'
-
-def isMvnCentral
-def isMvnSign
-if (hasProperty("isMavenSign")) {
-    isMvnSign = isMavenSign
-}
-if (hasProperty("isMavenCentral")) {
-    isMvnCentral = isMavenCentral
-}
-
-task sourceJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
-
-ext {
-    pomFilePath = "${project.projectDir}/tmp/pom.xml"
-    pomFile = file(pomFilePath)
-}
-configurations {
-    pom
-}
-
-// summarize artifacts
-artifacts {
-    archives jar
-    archives sourceJar
-    archives javadocJar
-    if (pomFile.exists()) {
-        pom pomFile
-    }
-}
-
-// sign all artifacts
-task signJars(type: Sign, dependsOn: [jar, javadocJar, sourceJar]) {
-    sign configurations.archives
-}
-
-// sign pom
-task signPom(type: Sign) {
-    sign configurations.pom
-}
-
-// defining which tasks should be called
-if (project.ext.pomFile.exists() && isMvnCentral == "true" && isMavenSign == "true") {
-    task preparePublication(dependsOn: [signJars, signPom])
-} else {
-//    task preparePublication(dependsOn: signJars)
-}
-
-// extract signature file and give them proper name
-def getSignatureFiles = {
-    def allFiles = project.tasks.signJars.signatureFiles.collect { it }
-    def signedSources = allFiles.find { it.name.contains('-sources') }
-    def signedJavadoc = allFiles.find { it.name.contains('-javadoc') }
-    def signedJar = (allFiles - [signedSources, signedJavadoc])[0]
-    return [
-            [archive: signedSources, classifier: 'sources', extension: 'jar.asc'],
-            [archive: signedJavadoc, classifier: 'javadoc', extension: 'jar.asc'],
-            [archive: signedJar, classifier: null, extension: 'jar.asc']
-    ]
-}
-
-// extract pom signature
-def getPomSignature = {
-    return project.tasks.signPom.signatureFiles.collect { it }[0]
-}
-
-// ./gradlew clean generatePomFileForJarPublication -PisMavenCentral=true
-// ./gradlew clean pP publish -PmavenUrl=xxx -PmavenUser=xxx -PmavenPassword=xxx -Psigning.keyId=xxx -Psigning.password=xxx -Psigning.secretKeyRingFile=xxx -PisMavenCentral=true
-publishing {
-    publications {
-        jar(MavenPublication) {
-            from components.java
-            pom.withXml {
-                // add required elements
-                asNode().children().last() + {
-                    resolveStrategy = Closure.DELEGATE_FIRST
-                    name 'service-client-java'
-                    description 'The client side componet of Nofdev RPC framework'
-                    url 'https://github.com/nofdev/service-client-java'
-                    scm {
-                        url 'https://github.com/nofdev/service-client-java.git'
-                        connection 'scm:git:git://github.com/nofdev/service-client-java.git'
-                        developerConnection 'scm:git:ssh:git@github.com:nofdev/service-client-java.git'
-                    }
-                    licenses {
-                        license {
-                            name 'The Apache Software License, Version 2.0'
-                            url 'http://www.apache.org/license/LICENSE-2.0.txt'
-                            distribution 'repo'
-                        }
-                    }
-                    developers {
-                        developer {
-                            id 'mengqiang'
-                            name 'Quincy Meng'
-                            email 'mengqiang81@gmail.com'
-                        }
-                    }
-                }
-            }
-            artifact sourceJar
-            artifact javadocJar
-
-            if (project.ext.pomFile.exists() && isMvnCentral == "true" && isMavenSign == "true") {
-                getSignatureFiles().each { signature ->
-                    artifact(signature.archive) {
-                        classifier = signature.classifier
-                        extension = signature.extension
-                    }
-                }
-                artifact(getPomSignature()) {
-                    classifier = null
-                    extension = 'pom.asc'
-                }
-            }
-        }
-
-//        gpgJars(MavenPublication) {
-//            getSignatureFiles().each { signature ->
-//                artifact(signature.archive) {
-//                    classifier = signature.classifier
-//                    extension = signature.extension
-//                }
-//            }
-//        }
-//
-//        if (project.ext.pomFile.exists()) {
-//            gpgPom(MavenPublication) {
-//                artifact(getPomSignature()) {
-//                    classifier = null
-//                    extension = 'pom.asc'
-//                }
-//            }
-//        }
-
-    }
-    repositories {
-        if (project.ext.pomFile.exists() && isMvnCentral == "true") {
-            maven {
-                url mavenUrl
-                credentials {
-                    username mavenUser
-                    password mavenPassword
-                }
-            }
-        } else {
-            mavenLocal()
-        }
-    }
-}
-
-//gradle generatePomFileForJarPublication
-model {
-    if (isMvnCentral == "true") {
-        tasks.generatePomFileForJarPublication {
-            destination = project.ext.pomFile
-        }
-    }
-}
+apply from: "$rootDir/gradle/script/common.gradle"

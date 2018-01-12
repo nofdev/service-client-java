@@ -6,23 +6,28 @@ import org.joda.time.DateTime
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
-import org.nofdev.servicefacade.ErrorDeserializedException
+import org.nofdev.client.RpcClient
+import org.nofdev.client.RpcProxy
+import org.nofdev.client.http.DefaultProxyStrategyImpl
+import org.nofdev.client.http.HttpCaller
 import org.nofdev.servicefacade.ExceptionMessage
+import org.nofdev.servicefacade.ServiceNotFoundException
 import spock.lang.Specification
+
 /**
  * Created by Qiang on 7/10/14.
  */
 class HttpJsonProxySpec extends Specification {
 
     private ClientAndServer mockServer
-    private def url
-    private def secureUrl
+    private String url
+    private String secureUrl
 
     def setupSpec() {
     }
 
     def setup() {
-        mockServer = ClientAndServer.startClientAndServer(9999,8443)
+        mockServer = ClientAndServer.startClientAndServer(9999, 8443)
         url = "http://localhost:9999"
         secureUrl = "https://localhost:8443"
     }
@@ -30,6 +35,24 @@ class HttpJsonProxySpec extends Specification {
     def cleanup() {
         mockServer.stop()
     }
+
+    def "测试RpcClient2"() {
+        setup:
+        mockServer.when(
+                HttpRequest.request()
+                        .withURL("${url}/facade/json/org.nofdev.http/Demo/sayHello")
+        ).respond(
+                HttpResponse.response()
+                        .withStatusCode(200)
+                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: null, err: null]).toString())
+        )
+        DemoFacade testFacadeService = RpcClient.build(DemoFacade,new HttpCaller(url))
+        def result = testFacadeService.sayHello()
+
+        expect:
+        result == null
+    }
+
 
     def "测试能否正常的代理一个远程接口"() {
         setup:
@@ -41,9 +64,10 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
         )
-        def proxy = new HttpJsonProxy(DemoFacade, url)
+
+        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
         def testFacadeService = proxy.getObject()
-        def result = testFacadeService."${method}"(*args);
+        def result = testFacadeService."${method}"(*args)
 
         expect:
         result == exp
@@ -64,16 +88,17 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
         )
-        def proxy = new HttpJsonProxy(DemoFacade, new DefaultProxyStrategyImpl(secureUrl),new PoolingConnectionManagerFactory(true),null)
+
+        def proxy = new RpcProxy(DemoFacade, new HttpCaller(new DefaultProxyStrategyImpl(secureUrl), null, new PoolingConnectionManagerFactory(true)))
         def testFacadeService = proxy.getObject()
-        def result = testFacadeService."${method}"(*args);
+        def result = testFacadeService."${method}"(*args)
 
         expect:
         result == exp
 
         where:
-        method              | args                                     | val                                      | exp
-        "method1"           | []                                       | "hello world"                            | "hello world"
+        method    | args | val           | exp
+        "method1" | []   | "hello world" | "hello world"
     }
 
     def "测试能否正常的代理一个远程接口抛出的异常"() {
@@ -87,8 +112,9 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(500)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: null, err: exceptionMessage]).toString())
         )
-        def proxy = new HttpJsonProxy(DemoFacade, url)
-        def testFacadeService = proxy.getObject()
+
+        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
+        DemoFacade testFacadeService = proxy.getObject() as DemoFacade
 
         when:
         testFacadeService.method1()
@@ -97,23 +123,11 @@ class HttpJsonProxySpec extends Specification {
         thrown(TestException)
     }
 
-//    def "测试JodaTime的序列化与反序列化"(){
-//        setup:
-//        mockServer.when(
-//                HttpRequest.request()
-//                        .withURL("${url}/method1")
-//        ).respond(
-//                HttpResponse.response()
-//                        .withStatusCode(200)
-//                        .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
-//        )
-//        def proxy = new HttpJsonProxy(DemoFacade, url)
-//        def testFacadeService = proxy.getObject()
-//	}
 
     def "测试代理策略接口"() {
         setup:
-        url = "http://localhost:9999/facade/json/org.nofdev.http/Demo"
+        def baseUrl = "http://localhost:9999"
+        url = "${baseUrl}/facade/json/org.nofdev.http/Demo"
         mockServer.when(
                 HttpRequest.request().withURL("${url}/${method}")
         ).respond(
@@ -121,10 +135,9 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
         )
-        def baseUrl = "http://localhost:9999"
-        def proxy = new HttpJsonProxy(DemoFacade, new DefaultProxyStrategyImpl(baseUrl))
+        def proxy = new RpcProxy(DemoFacade, new HttpCaller(new DefaultProxyStrategyImpl(baseUrl)))
         def testFacadeService = proxy.getObject()
-        def result = testFacadeService."${method}"(*args);
+        def result = testFacadeService."${method}"(*args)
         expect:
         result == exp
 
@@ -145,30 +158,31 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: null, err: null]).toString())
         )
-        def proxy = new HttpJsonProxy(DemoFacade, url)
-        def testFacadeService = proxy.getObject()
+        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
+        DemoFacade testFacadeService = proxy.getObject() as DemoFacade
         def result = testFacadeService.sayHello()
 
         expect:
         result == null
     }
 
-    def "测试远程服务器宕机的情况"(){
+    def "测试远程服务器宕机的情况"() {
         setup:
-        def proxy = new HttpJsonProxy(DemoFacade, url)
-        def testFacadeService = proxy.getObject()
+        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
+        DemoFacade testFacadeService = proxy.getObject() as DemoFacade
+        testFacadeService.sayHello()
         when:
         testFacadeService.sayHello()
         then:
-        thrown(Exception) //TODO Maybe it should be thrown as a custom ServiceNotFoundException
+        thrown(ServiceNotFoundException)
     }
 
     @Ignore
-    def "TODO 测试异常类不能被反序列化的情况"(){
-        setup:
-        when:
-        then:
-        thrown(ErrorDeserializedException)
+    def "TODO 测试异常类不能被反序列化的情况"() {
+//        setup:
+//        when:
+//        then:
+//        thrown(ErrorDeserializedException)
     }
 }
 
@@ -176,28 +190,28 @@ class UserDTO implements Serializable {
     /**
      * 姓名
      */
-    private String name;
+    private String name
     /**
      * 年龄
      */
-    private Integer age;
+    private Integer age
 
-    private DateTime birthday;
+    private DateTime birthday
 
-    public String getName() {
-        return name;
+    String getName() {
+        return name
     }
 
-    public void setName(String name) {
-        this.name = name;
+    void setName(String name) {
+        this.name = name
     }
 
-    public Integer getAge() {
-        return age;
+    Integer getAge() {
+        return age
     }
 
-    public void setAge(Integer age) {
-        this.age = age;
+    void setAge(Integer age) {
+        this.age = age
     }
 
     DateTime getBirthday() {
@@ -209,23 +223,23 @@ class UserDTO implements Serializable {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return (this.name == obj.name && this.age == obj.age && this.birthday.equals(this.birthday));
+    boolean equals(Object obj) {
+        return (this.name == obj.name && this.age == obj.age && this.birthday.equals(this.birthday))
     }
 
 }
 
 interface DemoFacade {
-    String method1();
+    String method1()
 
-    void sayHello();
+    void sayHello()
 
-    List<UserDTO> getAllAttendUsers(UserDTO userDTO);
+    List<UserDTO> getAllAttendUsers(UserDTO userDTO)
 }
 
 class TestException extends RuntimeException {
     TestException(String msg) {
-        super(msg);
+        super(msg)
     }
 }
 

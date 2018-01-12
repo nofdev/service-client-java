@@ -1,4 +1,4 @@
-package org.nofdev.http.oauth2
+package org.nofdev.client.http.oauth2
 
 /**
  * Created by HouDongQiang on 2016/3/17.
