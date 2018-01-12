@@ -2,11 +2,11 @@ package org.nofdev.client
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import org.nofdev.client.filter.DurationTimeFilter
-import org.nofdev.client.filter.RpcContextFilter
 import org.nofdev.core.Caller
 import org.nofdev.core.Request
 import org.nofdev.core.RpcFilter
+import org.nofdev.extension.ActivationComparator
+import org.nofdev.extension.ExtensionLoader
 
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
@@ -22,19 +22,11 @@ class RpcClient {
     static <T> T build(Class<T> inter, Caller caller) {
         return build(inter, caller, null)
     }
+
     static  <T> T build(Class<T> inter, Caller caller, List<RpcFilter> _filters) {
-        return build(inter,caller,_filters,false)
-    }
-    static  <T> T build(Class<T> inter, Caller caller, List<RpcFilter> _filters,boolean forceReplaceFilter) {
-        List<RpcFilter> filters = new ArrayList<>()
-        if(!forceReplaceFilter){
-            filters.add(RpcContextFilter.instance)
-            filters.add(DurationTimeFilter.instance)
-        }
-        if (_filters) filters.addAll(_filters)
 
+        Caller lastCaller=decorateWithFilter(_filters, caller)
 
-        Caller lastCaller=decorateWithFilter(filters, caller)
         return (T) Proxy.newProxyInstance(inter.getClassLoader(), [inter] as Class<?>[], new InvocationHandler() {
             @Override
             Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
@@ -51,8 +43,15 @@ class RpcClient {
         })
     }
 
+    private static Caller decorateWithFilter(List<RpcFilter> _filters, Caller caller) {
+        List<RpcFilter> filters = new ArrayList<>()
+        //获取所有的 filter
+        List<RpcFilter> extFilters = ExtensionLoader.getExtensionLoader(RpcFilter).getExtensions("")
+        if (extFilters) filters.addAll(extFilters)
+        if (_filters) filters.addAll(_filters)
+        Collections.sort(filters, new ActivationComparator<RpcFilter>())
 
-    static Caller decorateWithFilter(List<RpcFilter> filters, Caller caller) {
+        //组装成链
         List<RpcFilter> filtersReverseList = filters.reverse()
         Caller lastCaller = caller
         filtersReverseList.each { RpcFilter f ->

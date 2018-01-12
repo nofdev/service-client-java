@@ -4,13 +4,13 @@ import groovy.json.JsonBuilder
 import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
+import org.nofdev.client.RpcClient
+import org.nofdev.client.http.DefaultProxyStrategyImpl
 import org.nofdev.client.http.oauth2.OAuthConfig
 import org.nofdev.client.http.oauth2.OAuthHttpCaller
 import org.nofdev.client.http.oauth2.TokenContext
 import org.nofdev.exception.AuthenticationException
-import org.nofdev.client.http.DefaultProxyStrategyImpl
 import org.nofdev.http.PoolingConnectionManagerFactory
-import org.nofdev.client.RpcProxy
 import org.nofdev.servicefacade.UnhandledException
 import spock.lang.Specification
 
@@ -71,8 +71,8 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
 
 
-        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
-        def testFacadeService = proxy.getObject()
+
+        def testFacadeService = RpcClient.build(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
         def returnResult = testFacadeService."${method}"(*args)
         expect:
         returnResult == exp
@@ -106,8 +106,8 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "${secureTokenServerUrl}"
 
-        def proxy = new RpcProxy(DemoFacade.class,new OAuthHttpCaller(oAuthConfig, new DefaultProxyStrategyImpl(secureResourceUrl), new PoolingConnectionManagerFactory(true), null))
-        def testFacadeService = proxy.getObject()
+
+        def testFacadeService = RpcClient.build(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, new DefaultProxyStrategyImpl(secureResourceUrl), new PoolingConnectionManagerFactory(true), null))
         def returnResult = testFacadeService."${method}"(*args)
         expect:
         returnResult == exp
@@ -139,8 +139,8 @@ class OauthJsonProxySpec extends Specification {
 
 
 
-        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
-        def testFacadeService = proxy.getObject() as DemoFacade
+
+        def testFacadeService = RpcClient.build(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
 
         testFacadeService.method1()
         def tokenResult1 = TokenContext.instance.getAccess_token()
@@ -179,8 +179,8 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.authenticationServerUrl = "${tokenServerUrl}"
 
 
-        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
-        def testFacadeService = proxy.getObject() as DemoFacade
+
+        def testFacadeService = RpcClient.build(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
 
 
         testFacadeService.method1()
@@ -225,8 +225,8 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "http://localhost:9527/oauth/token"
 
-        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
-        def testFacadeService = proxy.getObject() as DemoFacade
+
+        def testFacadeService = RpcClient.build(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
 
         when:
         testFacadeService.sayHello()
@@ -248,8 +248,8 @@ class OauthJsonProxySpec extends Specification {
         oAuthConfig.grantType = "client_credentials"
         oAuthConfig.authenticationServerUrl = "http://localhost:1234/oauth/token"
 
-        def proxy = new RpcProxy(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
-        def testFacadeService = proxy.getObject() as DemoFacade
+
+        def testFacadeService = RpcClient.build(DemoFacade.class, new OAuthHttpCaller(oAuthConfig, resourceUrl))
 
         when:
         testFacadeService.sayHello()
@@ -293,7 +293,7 @@ class OauthJsonProxySpec extends Specification {
 //
 //
 //        LinkedList list = [new OAuthHttpCaller(oAuthConfig, resourceUrl)]
-//        def proxy = new RpcProxy(DemoFacade.class, list)
+//        RpcClient.build(DemoFacade.class, list)
 //        def testFacadeService = proxy.getObject() as DemoFacade
 //
 //        testFacadeService.method1()

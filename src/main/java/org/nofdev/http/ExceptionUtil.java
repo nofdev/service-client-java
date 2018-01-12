@@ -48,7 +48,7 @@ public class ExceptionUtil {
             return new ErrorDeserializedException(e);
         }
         if (throwable instanceof AbstractBusinessException) {
-            ((AbstractBusinessException) throwable).setDatail(exceptionMessage.getDatail());
+            ((AbstractBusinessException) throwable).setDetail(exceptionMessage.getDetail());
         }
         return throwable;
     }

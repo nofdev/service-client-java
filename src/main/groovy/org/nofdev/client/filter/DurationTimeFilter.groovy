@@ -4,13 +4,14 @@ import groovy.util.logging.Slf4j
 import org.nofdev.core.Caller
 import org.nofdev.core.Request
 import org.nofdev.core.RpcFilter
+import org.nofdev.extension.Activation
 
 /**
  * Created by Liutengfei on 2017/10/27
  */
-@Singleton
+@Activation(sequence = -80)
 @Slf4j
-class DurationTimeFilter extends RpcFilter {
+class DurationTimeFilter implements RpcFilter {
 
     static final lineSeparator = System.properties.'line.separator'
 

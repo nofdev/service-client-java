@@ -7,7 +7,6 @@ import org.mockserver.integration.ClientAndServer
 import org.mockserver.model.HttpRequest
 import org.mockserver.model.HttpResponse
 import org.nofdev.client.RpcClient
-import org.nofdev.client.RpcProxy
 import org.nofdev.client.http.DefaultProxyStrategyImpl
 import org.nofdev.client.http.HttpCaller
 import org.nofdev.servicefacade.ExceptionMessage
@@ -65,8 +64,7 @@ class HttpJsonProxySpec extends Specification {
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
         )
 
-        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
-        def testFacadeService = proxy.getObject()
+        def testFacadeService =RpcClient.build(DemoFacade, new HttpCaller(url))
         def result = testFacadeService."${method}"(*args)
 
         expect:
@@ -89,8 +87,7 @@ class HttpJsonProxySpec extends Specification {
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
         )
 
-        def proxy = new RpcProxy(DemoFacade, new HttpCaller(new DefaultProxyStrategyImpl(secureUrl), null, new PoolingConnectionManagerFactory(true)))
-        def testFacadeService = proxy.getObject()
+        def testFacadeService = RpcClient.build(DemoFacade, new HttpCaller(new DefaultProxyStrategyImpl(secureUrl), null, new PoolingConnectionManagerFactory(true)))
         def result = testFacadeService."${method}"(*args)
 
         expect:
@@ -113,8 +110,7 @@ class HttpJsonProxySpec extends Specification {
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: null, err: exceptionMessage]).toString())
         )
 
-        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
-        DemoFacade testFacadeService = proxy.getObject() as DemoFacade
+        DemoFacade testFacadeService =RpcClient.build(DemoFacade, new HttpCaller(url))
 
         when:
         testFacadeService.method1()
@@ -135,8 +131,7 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: val, err: null]).toString())
         )
-        def proxy = new RpcProxy(DemoFacade, new HttpCaller(new DefaultProxyStrategyImpl(baseUrl)))
-        def testFacadeService = proxy.getObject()
+        def testFacadeService = RpcClient.build(DemoFacade, new HttpCaller(new DefaultProxyStrategyImpl(baseUrl)))
         def result = testFacadeService."${method}"(*args)
         expect:
         result == exp
@@ -158,8 +153,7 @@ class HttpJsonProxySpec extends Specification {
                         .withStatusCode(200)
                         .withBody(new JsonBuilder([callId: UUID.randomUUID().toString(), val: null, err: null]).toString())
         )
-        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
-        DemoFacade testFacadeService = proxy.getObject() as DemoFacade
+        DemoFacade testFacadeService = RpcClient.build(DemoFacade, new HttpCaller(url))
         def result = testFacadeService.sayHello()
 
         expect:
@@ -168,8 +162,7 @@ class HttpJsonProxySpec extends Specification {
 
     def "测试远程服务器宕机的情况"() {
         setup:
-        def proxy = new RpcProxy(DemoFacade, new HttpCaller(url))
-        DemoFacade testFacadeService = proxy.getObject() as DemoFacade
+        DemoFacade testFacadeService = RpcClient.build(DemoFacade, new HttpCaller(url))
         testFacadeService.sayHello()
         when:
         testFacadeService.sayHello()
