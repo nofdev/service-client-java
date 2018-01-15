@@ -36,6 +36,7 @@ public class ExceptionUtil {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public static Throwable getThrowableInstance(ExceptionMessage exceptionMessage) {
         Throwable throwable = null;
         try {

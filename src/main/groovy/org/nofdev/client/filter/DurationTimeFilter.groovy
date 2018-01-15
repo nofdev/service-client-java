@@ -4,12 +4,12 @@ import groovy.util.logging.Slf4j
 import org.nofdev.core.Caller
 import org.nofdev.core.Request
 import org.nofdev.core.RpcFilter
-import org.nofdev.extension.Activation
+import org.nofdev.extension.SpiMeta
 
 /**
  * Created by Liutengfei on 2017/10/27
  */
-@Activation(sequence = -80)
+@SpiMeta(order = -80)
 @Slf4j
 class DurationTimeFilter implements RpcFilter {
 
@@ -20,9 +20,7 @@ class DurationTimeFilter implements RpcFilter {
         Object result = null
         def start = System.currentTimeMillis()
         try {
-            log.info("1 DurationTimeFilter")
             result = caller.call(request)
-            log.info("2 DurationTimeFilter")
         } finally {
             long millis = System.currentTimeMillis() - start
             def slow = ''
