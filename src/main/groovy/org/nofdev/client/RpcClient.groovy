@@ -25,6 +25,7 @@ class RpcClient<T> implements InvocationHandler {
 
     private Class<T> inter
     private Caller caller
+    private List<RpcFilter> filters
 
 
     RpcClient(Class<T> inter, Caller _caller) {
@@ -33,14 +34,19 @@ class RpcClient<T> implements InvocationHandler {
 
     RpcClient(Class<T> inter, Caller _caller, List<RpcFilter> _filters) {
         this.inter = inter
-        this.caller = decorateWithFilter(_filters, _caller)
+        this.filters = findFilters(_filters)
+        this.caller = decorateWithFilter(filters, _caller)
     }
 
 
     @Override
     Object invoke(Object proxy, Method method, Object[] args) throws IOException, NoSuchAlgorithmException, KeyStoreException, KeyManagementException, ClassNotFoundException, NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException, Throwable {
-        if ("hashCode" == method.getName()) {return inter.hashCode()}
-        if ("toString" == method.getName()) {return inter.toString()}
+        if ("hashCode" == method.getName()) {
+            return inter.hashCode()
+        }
+        if ("toString" == method.getName()) {
+            return inter.toString()
+        }
 
         Request request = new Request()
         request.clazz = inter
@@ -50,16 +56,23 @@ class RpcClient<T> implements InvocationHandler {
         return caller.call(request)
     }
 
-    private static Caller decorateWithFilter(List<RpcFilter> _filters, Caller caller) {
-        List<RpcFilter> filters = new ArrayList<>()
-        //获取所有的 filter
+    /**
+     * 获取所有的 filter
+     */
+    private static List<RpcFilter> findFilters(List<RpcFilter> _filters) {
+        List<RpcFilter> allFilters = new ArrayList<>()
         List<RpcFilter> extFilters = ExtensionLoader.getExtensionLoader(RpcFilter).getExtensions("")
-        if (extFilters) filters.addAll(extFilters)
-        if (_filters) filters.addAll(_filters)
-        Collections.sort(filters, new ActivationComparator<RpcFilter>())
-
-        //组装成链
-        List<RpcFilter> filtersReverseList = filters.reverse()
+        if (extFilters) allFilters.addAll(extFilters)
+        if (_filters) allFilters.addAll(_filters)
+        Collections.sort(allFilters, new ActivationComparator<RpcFilter>())
+        allFilters
+    }
+    /**
+     * 将所有的 filter 组装成调用链
+     */
+    private static Caller decorateWithFilter(List<RpcFilter> _filters, Caller caller) {
+        List<RpcFilter> filtersReverseList = _filters.reverse()
+        //
         Caller lastCaller = caller
         filtersReverseList.each { RpcFilter f ->
             final Caller lp = lastCaller
@@ -73,6 +86,7 @@ class RpcClient<T> implements InvocationHandler {
         return lastCaller
     }
 
+
     T getObject() {
         return (T) Proxy.newProxyInstance(inter.getClassLoader(), [inter] as Class<?>[], this)
     }
@@ -83,5 +97,17 @@ class RpcClient<T> implements InvocationHandler {
 
     Caller getCaller() {
         return caller
+    }
+
+    List<RpcFilter> getFilters() {
+        return filters
+    }
+
+    static <T> T build(Class<T> inter, Caller caller) {
+        return new RpcClient<T>(inter, caller).getObject()
+    }
+
+    static <T> T build(Class<T> inter, Caller caller, List<RpcFilter> _filters) {
+        return new RpcClient<T>(inter, caller, _filters).getObject()
     }
 }
