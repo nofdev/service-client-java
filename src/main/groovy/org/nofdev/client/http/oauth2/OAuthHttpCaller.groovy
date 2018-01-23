@@ -34,7 +34,7 @@ class OAuthHttpCaller implements Caller {
     private OAuthConfig oAuthConfig
 
 
-    OAuthHttpCaller(OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy, PoolingConnectionManagerFactory poolingConnectionManagerFactory, DefaultRequestConfig defaultRequestConfig) {
+    OAuthHttpCaller(OAuthConfig oAuthConfig, ProxyStrategy proxyStrategy, DefaultRequestConfig defaultRequestConfig, PoolingConnectionManagerFactory poolingConnectionManagerFactory) {
         this.proxyStrategy = proxyStrategy
         this.oAuthConfig = oAuthConfig
 
