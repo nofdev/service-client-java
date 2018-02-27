@@ -7,7 +7,7 @@ repositories {
     jcenter()
     maven { url "http://repo.spring.io/snapshot" }
     maven { url "http://repo.spring.io/milestone" }
-    maven { url 'http://nexus.yintai.org:8081/nexus/content/groups/public' }
+    maven { url 'https://nexus.yintai.com/nexus/content/groups/public' }
 }
 
 group = 'org.nofdev'
@@ -28,7 +28,7 @@ dependencies {
     compile 'org.apache.oltu.oauth2:org.apache.oltu.oauth2.client:1.0.1'
 
     compile "org.nofdev:http-client-util:1.0.3"
-    compile('org.nofdev:service-core:1.3.5-SNAPSHOT')
+    compile('org.nofdev:service-core:1.3.5.RC')
 
     testCompile(
             "org.spockframework:spock-core:1.0-groovy-2.4",
